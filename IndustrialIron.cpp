@@ -1,5 +1,6 @@
 #include "IndustrialIron.h"
 #include "IPlug_include_in_plug_src.h"
+#include <cmath>
 
 #if IPLUG_EDITOR
 #include "IControls.h"
@@ -198,14 +199,38 @@ void IndustrialIron::OnParamChange(int paramIdx)
 }
 #endif
 
-// ---- ProcessBlock (pass-through — no DSP in Phase 1) ----------------------
+// ---- DSP -------------------------------------------------------------------
 #if IPLUG_DSP
+void IndustrialIron::OnReset()
+{
+    mAsymClipper.OnReset(GetSampleRate());
+    SetLatency(mAsymClipper.GetLatency());
+}
+
 void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-    // Phase 1: pure pass-through. Input is mono (ch 0), output is stereo (ch 0 + ch 1).
-    for (int s = 0; s < nFrames; ++s) {
-        outputs[0][s] = inputs[0][s];
-        outputs[1][s] = inputs[0][s];
+    // Phase 2a chain: InputGain → AsymClipper → OutputGain
+    // kGain maps 0–1 → -20 to +40 dB (range 60 dB)
+    const double gainDb   = -20.0 + 60.0 * GetParam(kGain)->Value();
+    const double gainLin  = std::pow(10.0, gainDb  / 20.0);
+
+    // kParamOutput maps 0–1 → -20 to +6 dB (range 26 dB)
+    const double outDb    = -20.0 + 26.0 * GetParam(kParamOutput)->Value();
+    const double outLin   = std::pow(10.0, outDb   / 20.0);
+
+    // Apply input gain into outputs[0] (scratch — IronWallPanner not yet in chain)
+    for (int s = 0; s < nFrames; ++s)
+        outputs[0][s] = static_cast<sample>(inputs[0][s] * gainLin);
+
+    // Hard clip with x4 oversampling (in-place)
+    mAsymClipper.ProcessBlock(outputs[0], outputs[0], nFrames);
+
+    // Apply output gain and fan out to both channels (mono→stereo passthrough for Phase 2a)
+    for (int s = 0; s < nFrames; ++s)
+    {
+        const sample v = static_cast<sample>(outputs[0][s] * outLin);
+        outputs[0][s] = v;
+        outputs[1][s] = v;
     }
 }
 #endif

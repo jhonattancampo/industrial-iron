@@ -19,7 +19,7 @@
 // Mono input -> Stereo output (IronWallPanner generates L/R from mono)
 #define PLUG_CHANNEL_IO "1-2"
 
-#define PLUG_LATENCY 0
+#define PLUG_LATENCY 14
 #define PLUG_TYPE 0
 #define PLUG_DOES_MIDI_IN 0
 #define PLUG_DOES_MIDI_OUT 0
