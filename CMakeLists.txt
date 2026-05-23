@@ -11,6 +11,8 @@ iplug_add_plugin(${PROJECT_NAME}
   SOURCES
     IndustrialIron.cpp
     IndustrialIron.h
+    src/dsp/AsymClipper.cpp
+    src/dsp/AsymClipper.h
     resources/resource.h
     src/i18n/StringKeys.h
     src/i18n/Strings_EN.h
