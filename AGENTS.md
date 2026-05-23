@@ -28,3 +28,9 @@ Antes de QA → lee `skills/audio-testing/SKILL.md`
 ## Fases activas
 Ver sección 9 del Spec.md. No implementar código de fases futuras.
 Siempre presentar plan y esperar aprobación antes de implementar.
+
+## Phase completion rule
+No phase is complete until a QA subagent runs the checklist
+from skills/audio-testing/SKILL.md and reports results.
+The orchestrator must launch this subagent explicitly at the
+end of every phase, before any git commits.
