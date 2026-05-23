@@ -187,3 +187,42 @@ git checkout -- src/dsp/AsymClipper.cpp
 # See what changed in last commit
 git show --stat
 ```
+
+
+## PR format (mandatory — runs as part of Subagent 3)
+
+After pushing the branch, open a PR using GitHub CLI:
+
+```bash
+gh pr create \
+  --title "feat(phase-Xa): <short description>" \
+  --body "$(cat <<'EOF'
+## Summary
+<one paragraph: what this phase does and why>
+
+## Phase
+Phase Xa — <phase name>
+
+## Changes
+<bullet list of files touched and what changed in each>
+
+## DSP notes (if applicable)
+<any non-obvious technical decisions, quirks found, latency changes>
+
+## QA results
+<paste QA subagent report here>
+
+## Commits
+<list of commits with SHA and description>
+EOF
+)" \
+  --base dev \
+  --head feat/phase-Xa-<name>
+```
+
+## PR rules
+- Always target `dev`, never `main` directly
+- PR must include QA results — no QA report = PR is incomplete
+- Title follows Conventional Commits format
+- One PR per phase branch
+- Merge only after explicit approval
