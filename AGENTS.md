@@ -1,0 +1,30 @@
+# Industrial Iron — Agent Instructions
+
+## Proyecto
+Plugin de guitarra VST3/AU/CLAP con iPlug2OOS.
+Identidad: German Industrial Metal tone. Sin referencias a bandas reales.
+
+## Fuente de verdad
+Lee `Spec.md` completo antes de cualquier tarea. Es el contrato irrompible.
+
+## Build
+```bash
+cmake --preset macos-ninja
+cmake --build build --config Release
+```
+El .vst3 se despliega automáticamente en ~/Library/Audio/Plug-Ins/VST3/
+
+## Convenciones obligatorias
+- Todos los strings de UI pasan por LS() — nunca hardcoded
+- Coeficientes biquad se calculan en OnReset(), nunca hardcodeados
+- Oversample x4 obligatorio en AsymClipper
+- No mencionar bandas/artistas en comentarios, variables, ni strings
+
+## Skills disponibles
+Antes de implementar DSP → lee `skills/iplug2oos-dsp/SKILL.md`
+Antes de tocar CMake/build → lee `skills/cpp-audio-plugin/SKILL.md`
+Antes de QA → lee `skills/audio-testing/SKILL.md`
+
+## Fases activas
+Ver sección 9 del Spec.md. No implementar código de fases futuras.
+Siempre presentar plan y esperar aprobación antes de implementar.
