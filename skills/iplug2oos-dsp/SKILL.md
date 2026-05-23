@@ -35,3 +35,12 @@ Toggle de módulos con crossfade de 64 samples mínimo para evitar clicks.
 - Hardcodear sample rate (siempre GetSampleRate())
 - Olvidar resetear estado de filtros en OnReset()
 - No compensar latencia al agregar oversample (actualizar PLUG_LATENCY)
+
+
+## Known iPlug2OOS quirks
+
+### HIIR headers missing <cassert>
+Any DSP module that includes `Extras/Oversampler.h` must add:
+  #include <cassert>
+before that include, or compilation fails as a separate translation unit.
+Apply this to every new file in src/dsp/ that uses oversampling.

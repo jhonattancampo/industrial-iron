@@ -2,6 +2,7 @@
 
 #include "IPlug_include_in_plug_hdr.h"
 #include "src/i18n/LocalizedStrings.h"
+#include "src/dsp/AsymClipper.h"
 
 // Parameter indices — must match registration order in constructor
 enum EParams
@@ -50,6 +51,7 @@ public:
 #endif
 
 #if IPLUG_DSP
+    void OnReset() override;
     void ProcessBlock(sample** inputs, sample** outputs, int nFrames) override;
 #endif
 
@@ -74,4 +76,5 @@ private:
     };
 
     int mCurrentPreset = 0;
+    AsymClipper mAsymClipper;
 };
