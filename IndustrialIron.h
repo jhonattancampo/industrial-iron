@@ -3,6 +3,8 @@
 #include "IPlug_include_in_plug_hdr.h"
 #include "src/i18n/LocalizedStrings.h"
 #include "src/dsp/AsymClipper.h"
+#include "src/dsp/PreEQ.h"
+#include "src/dsp/PostCompressor.h"
 
 // Parameter indices — must match registration order in constructor
 enum EParams
@@ -76,5 +78,7 @@ private:
     };
 
     int mCurrentPreset = 0;
-    AsymClipper mAsymClipper;
+    PreEQ           mPreEQ;
+    AsymClipper     mAsymClipper;
+    PostCompressor  mPostCompressor;
 };
