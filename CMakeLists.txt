@@ -13,6 +13,10 @@ iplug_add_plugin(${PROJECT_NAME}
     IndustrialIron.h
     src/dsp/AsymClipper.cpp
     src/dsp/AsymClipper.h
+    src/dsp/PreEQ.cpp
+    src/dsp/PreEQ.h
+    src/dsp/PostCompressor.cpp
+    src/dsp/PostCompressor.h
     resources/resource.h
     src/i18n/StringKeys.h
     src/i18n/Strings_EN.h
