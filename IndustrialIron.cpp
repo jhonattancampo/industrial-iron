@@ -203,32 +203,40 @@ void IndustrialIron::OnParamChange(int paramIdx)
 #if IPLUG_DSP
 void IndustrialIron::OnReset()
 {
-    mAsymClipper.OnReset(GetSampleRate());
+    const double sr = GetSampleRate();
+    mPreEQ.OnReset(sr);
+    mAsymClipper.OnReset(sr);
+    mPostCompressor.OnReset(sr);
     SetLatency(mAsymClipper.GetLatency());
 }
 
 void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-    // Phase 2a chain: InputGain → AsymClipper → OutputGain
-    // kGain maps 0–1 → -20 to +40 dB (range 60 dB)
-    const double gainDb   = -20.0 + 60.0 * GetParam(kGain)->Value();
-    const double gainLin  = std::pow(10.0, gainDb  / 20.0);
+    // Phase 2b chain: InputGain → PreEQ → AsymClipper → PostCompressor → OutputGain
 
-    // kParamOutput maps 0–1 → -20 to +6 dB (range 26 dB)
-    const double outDb    = -20.0 + 26.0 * GetParam(kParamOutput)->Value();
-    const double outLin   = std::pow(10.0, outDb   / 20.0);
+    // kGain: 0–1 → -20 to +40 dB
+    const double gainDb  = -20.0 + 60.0 * GetParam(kGain)->Value();
+    const double gainLin = std::pow(10.0, gainDb / 20.0);
 
-    // Apply input gain into outputs[0] (scratch — IronWallPanner not yet in chain)
+    // kParamOutput: 0–1 → -20 to +6 dB
+    const double outDb   = -20.0 + 26.0 * GetParam(kParamOutput)->Value();
+    const double outLin  = std::pow(10.0, outDb  / 20.0);
+
+    // Update tone/tightness once per block (coefficient update is cheap, no audio artifacts)
+    mPreEQ.SetTone(static_cast<float>(GetParam(kTone)->Value()));
+    mPostCompressor.SetTightness(static_cast<float>(GetParam(kTightness)->Value()));
+
+    // InputGain + PreEQ → outputs[0] (AsymClipper reads from here)
     for (int s = 0; s < nFrames; ++s)
-        outputs[0][s] = static_cast<sample>(inputs[0][s] * gainLin);
+        outputs[0][s] = static_cast<sample>(mPreEQ.Process(inputs[0][s] * gainLin));
 
     // Hard clip with x4 oversampling (in-place)
     mAsymClipper.ProcessBlock(outputs[0], outputs[0], nFrames);
 
-    // Apply output gain and fan out to both channels (mono→stereo passthrough for Phase 2a)
+    // PostCompressor + OutputGain → fan out to both channels (IronWallPanner Phase 3)
     for (int s = 0; s < nFrames; ++s)
     {
-        const sample v = static_cast<sample>(outputs[0][s] * outLin);
+        const sample v = static_cast<sample>(mPostCompressor.Process(outputs[0][s]) * outLin);
         outputs[0][s] = v;
         outputs[1][s] = v;
     }
