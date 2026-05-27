@@ -5,6 +5,8 @@
 #include "src/dsp/AsymClipper.h"
 #include "src/dsp/PreEQ.h"
 #include "src/dsp/PostCompressor.h"
+#include "src/dsp/IronWallPanner.h"
+#include <vector>
 
 // Parameter indices — must match registration order in constructor
 enum EParams
@@ -81,4 +83,13 @@ private:
     PreEQ           mPreEQ;
     AsymClipper     mAsymClipper;
     PostCompressor  mPostCompressor;
+    IronWallPanner  mIronWall;
+    float           mCorrelation  = 0.f;
+    bool            mPhaseWarning = false;
+
+    // Conversion buffers for double→float→double around IronWallPanner
+    // Pre-allocated in OnReset() to avoid heap allocation in ProcessBlock
+    std::vector<float> mMonoF;
+    std::vector<float> mOutLF;
+    std::vector<float> mOutRF;
 };
