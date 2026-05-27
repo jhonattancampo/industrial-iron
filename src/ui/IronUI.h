@@ -6,19 +6,27 @@
 #include "IControl.h"
 #include "src/i18n/LocalizedStrings.h"
 #include <atomic>
-#include <algorithm>
 #include <cmath>
 
 // CorrelationMeterControl -------------------------------------------------------
 // A horizontal meter (~300 px wide, ~12 px tall) displaying L/R phase correlation.
 // Reads from std::atomic<float>& — safe for audio-thread writes, UI-thread reads.
+//
+// NOTE: OnGUIIdle() requires USE_IDLE_CALLS which is NOT defined in this project.
+// Per-frame updates are driven by SetAnimation() instead: IGraphics::IsDirty()
+// calls ForAllControls(&IControl::Animate) unconditionally every frame, and
+// IControl::IsDirty() returns true whenever an animation function is set —
+// so the control redraws every frame without any preprocessor flag.
 class CorrelationMeterControl : public IControl
 {
 public:
     CorrelationMeterControl(const IRECT& bounds, std::atomic<float>& corr)
-        : IControl(bounds), mCorr(corr) {}
-
-    void OnGUIIdle() override { SetDirty(true); }
+        : IControl(bounds), mCorr(corr)
+    {
+        // Register for unconditional per-frame redraws via the animation pass.
+        // An empty (but non-null) animation function makes IsDirty() always true.
+        SetAnimation([](IControl*) {});
+    }
 
     void Draw(IGraphics& g) override
     {
@@ -27,9 +35,9 @@ public:
 
         // Background: solid color based on correlation quality
         IColor bgColor;
-        if      (absc > 0.8f) bgColor = IColor{255,   0, 204,  68};  // green
-        else if (absc > 0.5f) bgColor = IColor{255, 204, 170,   0};  // yellow
-        else                  bgColor = IColor{255, 204,  34,   0};  // red
+        if      (absc > 0.8f) bgColor = IColor{255,   0, 204,  68};  // green  #00CC44
+        else if (absc > 0.5f) bgColor = IColor{255, 204, 170,   0};  // yellow #CCAA00
+        else                  bgColor = IColor{255, 204,  34,   0};  // red    #CC2200
 
         g.FillRect(bgColor, mRECT);
 
@@ -49,40 +57,31 @@ private:
 
 // WarningControl ---------------------------------------------------------------
 // Shows a warning string when phase cancellation or hot input is detected.
-// Always attached and visible to the graphics engine; renders nothing when
-// no warning is active. (iPlug2 does not call OnGUIIdle on hidden controls
-// in some hosting configurations, so we keep the control always visible and
-// draw nothing instead of hiding.)
+// Renders nothing when no warning is active (control area is transparent).
+// Same SetAnimation() pattern as CorrelationMeterControl for per-frame updates.
 class WarningControl : public IControl
 {
 public:
     WarningControl(const IRECT& bounds, std::atomic<bool>& phaseWarn, const IText& text)
-        : IControl(bounds), mPhaseWarn(phaseWarn), mText(text) {}
-
-    void OnGUIIdle() override
+        : IControl(bounds), mPhaseWarn(phaseWarn), mText(text)
     {
-        const bool phase = mPhaseWarn.load();
-        const bool clip  = GetDelegate() && GetDelegate()->GetParam(kGain)->Value() > 0.85;
-        const bool show  = phase || clip;
-
-        if (show != mShowing)
-        {
-            mShowing = show;
-            if (show)
-                mMsg = phase ? LS(kWarningPhaseCancel) : LS(kWarningClipHot);
-            SetDirty(true);
-        }
+        SetAnimation([](IControl*) {});
     }
 
     void Draw(IGraphics& g) override
     {
-        if (!mShowing || !mMsg) return;  // transparent when inactive
-        g.DrawText(mText, mMsg, mRECT);
+        if (!GetDelegate()) return;
+
+        const bool phase = mPhaseWarn.load();
+        const bool clip  = GetDelegate()->GetParam(kGain)->Value() > 0.85;
+
+        if (!phase && !clip) return;  // render nothing — transparent when inactive
+
+        const char* msg = phase ? LS(kWarningPhaseCancel) : LS(kWarningClipHot);
+        g.DrawText(mText, msg, mRECT);
     }
 
 private:
     std::atomic<bool>& mPhaseWarn;
     IText              mText;
-    const char*        mMsg     = nullptr;
-    bool               mShowing = false;
 };
