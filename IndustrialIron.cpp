@@ -145,26 +145,26 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
 
         pGraphics->AttachControl(
             new IVButtonControl(p0, [&](IControl* pCtrl) {
-                GetParam(kPreset)->Set(0.);
-                InformHostOfParamChange(kPreset, 0.);
+                BeginInformHostOfParamChange(kPreset);
+                SendParameterValueFromUI(kPreset, 0.0);
+                EndInformHostOfParamChange(kPreset);
                 LoadPreset(0);
-                pCtrl->GetDelegate()->SendParameterValueFromUI(kPreset, 0.);
             }, LS(kPresetRhythmHeavy), presetStyle), kCtrlTagPreset0);
 
         pGraphics->AttachControl(
             new IVButtonControl(p1, [&](IControl* pCtrl) {
-                GetParam(kPreset)->Set(0.5);
-                InformHostOfParamChange(kPreset, 0.5);
+                BeginInformHostOfParamChange(kPreset);
+                SendParameterValueFromUI(kPreset, 0.5);
+                EndInformHostOfParamChange(kPreset);
                 LoadPreset(1);
-                pCtrl->GetDelegate()->SendParameterValueFromUI(kPreset, 0.5);
             }, LS(kPresetLeadCut), presetStyle), kCtrlTagPreset1);
 
         pGraphics->AttachControl(
             new IVButtonControl(p2, [&](IControl* pCtrl) {
-                GetParam(kPreset)->Set(1.);
-                InformHostOfParamChange(kPreset, 1.);
+                BeginInformHostOfParamChange(kPreset);
+                SendParameterValueFromUI(kPreset, 1.0);
+                EndInformHostOfParamChange(kPreset);
                 LoadPreset(2);
-                pCtrl->GetDelegate()->SendParameterValueFromUI(kPreset, 1.);
             }, LS(kPresetDIClean), presetStyle), kCtrlTagPreset2);
     };
 #endif
@@ -176,16 +176,35 @@ void IndustrialIron::LoadPreset(int presetIdx)
     if (presetIdx < 0 || presetIdx > 2) return;
     mCurrentPreset = presetIdx;
     const PresetData& p = kPresets[presetIdx];
-    GetParam(kGain)->Set(p.gain);
-    GetParam(kTone)->Set(p.tone);
-    GetParam(kTightness)->Set(p.tightness);
-    GetParam(kWidth)->Set(p.width);
-    GetParam(kCabOn)->Set(p.cabOn);
-    InformHostOfParamChange(kGain,      p.gain);
-    InformHostOfParamChange(kTone,      p.tone);
-    InformHostOfParamChange(kTightness, p.tightness);
-    InformHostOfParamChange(kWidth,     p.width);
-    InformHostOfParamChange(kCabOn,     p.cabOn);
+
+    // SendParameterValueFromUI sets the value, notifies the host, AND calls
+    // OnParamChangeUI which marks knob controls dirty so they visually update.
+    // InformHostOfParamChange alone does NOT do the UI update — that was the bug.
+    auto notify = [&](int paramIdx, double normalizedValue) {
+        BeginInformHostOfParamChange(paramIdx);
+        SendParameterValueFromUI(paramIdx, normalizedValue);
+        EndInformHostOfParamChange(paramIdx);
+    };
+
+    notify(kGain,       p.gain);
+    notify(kTone,       p.tone);
+    notify(kTightness,  p.tightness);
+    notify(kWidth,      p.width);
+    notify(kCabOn,      p.cabOn);
+
+#if IPLUG_EDITOR
+    if (auto* pUI = GetUI())
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            if (auto* pCtrl = pUI->GetControlWithTag(kCtrlTagPreset0 + i))
+            {
+                pCtrl->SetValue(i == presetIdx ? 1.0 : 0.0);
+                pCtrl->SetDirty(false);
+            }
+        }
+    }
+#endif
 }
 
 #if IPLUG_EDITOR
@@ -219,7 +238,7 @@ void IndustrialIron::OnReset()
 
 void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-    // Phase 3 chain: InputGain → PreEQ → AsymClipper → PostCompressor → IronWallPanner → OutputGain
+    // Phase 4 chain: InputGain → PreEQ → AsymClipper → PostCompressor → CabSim → IronWallPanner → OutputGain
 
     // kGain: 0–1 → -20 to +40 dB
     const double gainDb  = -20.0 + 60.0 * GetParam(kGain)->Value();
