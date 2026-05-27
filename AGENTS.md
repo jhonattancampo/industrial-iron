@@ -10,9 +10,10 @@ Lee `Spec.md` completo antes de cualquier tarea. Es el contrato irrompible.
 ## Build
 ```bash
 cmake --preset macos-ninja
-cmake --build build --config Release
+ninja -C build/macos-ninja
 ```
-El .vst3 se despliega automáticamente en ~/Library/Audio/Plug-Ins/VST3/
+VST3 y AU se despliegan automáticamente.
+
 
 ## Convenciones obligatorias
 - Todos los strings de UI pasan por LS() — nunca hardcoded
