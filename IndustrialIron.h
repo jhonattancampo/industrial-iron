@@ -6,6 +6,7 @@
 #include "src/dsp/PreEQ.h"
 #include "src/dsp/PostCompressor.h"
 #include "src/dsp/IronWallPanner.h"
+#include "src/dsp/CabSim.h"
 #include <vector>
 
 // Parameter indices — must match registration order in constructor
@@ -30,9 +31,7 @@ enum ECtrlTags
     kCtrlTagWidthKnob,
     kCtrlTagOutputKnob,
     kCtrlTagCabToggle,
-    kCtrlTagPreset0,
-    kCtrlTagPreset1,
-    kCtrlTagPreset2,
+    kCtrlTagPresetRadio,
     kCtrlTagTitle,
     kCtrlTagVersion,
     kNumCtrlTags
@@ -79,10 +78,11 @@ private:
         { 0.30f, 0.50f, 0.20f, 0.00f, 0.f },  // DI Clean
     };
 
-    int mCurrentPreset = 0;
+    int mCurrentPreset = -1;  // -1 = no preset active
     PreEQ           mPreEQ;
     AsymClipper     mAsymClipper;
     PostCompressor  mPostCompressor;
+    CabSim          mCabSim;
     IronWallPanner  mIronWall;
     float           mCorrelation  = 0.f;
     bool            mPhaseWarning = false;
