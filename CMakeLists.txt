@@ -17,6 +17,8 @@ iplug_add_plugin(${PROJECT_NAME}
     src/dsp/PreEQ.h
     src/dsp/PostCompressor.cpp
     src/dsp/PostCompressor.h
+    src/dsp/IronWallPanner.cpp
+    src/dsp/IronWallPanner.h
     resources/resource.h
     src/i18n/StringKeys.h
     src/i18n/Strings_EN.h
