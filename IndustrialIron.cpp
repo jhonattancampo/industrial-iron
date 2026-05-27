@@ -207,6 +207,7 @@ void IndustrialIron::OnReset()
     mPreEQ.OnReset(sr);
     mAsymClipper.OnReset(sr);
     mPostCompressor.OnReset(sr);
+    mCabSim.OnReset(sr);
     mIronWall.OnReset(sr);
     SetLatency(mAsymClipper.GetLatency());
 
@@ -228,9 +229,10 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     const double outDb   = -20.0 + 26.0 * GetParam(kParamOutput)->Value();
     const double outLin  = std::pow(10.0, outDb  / 20.0);
 
-    // Update tone/tightness once per block (coefficient update is cheap, no audio artifacts)
+    // Update tone/tightness/cabOn once per block (coefficient update is cheap, no audio artifacts)
     mPreEQ.SetTone(static_cast<float>(GetParam(kTone)->Value()));
     mPostCompressor.SetTightness(static_cast<float>(GetParam(kTightness)->Value()));
+    mCabSim.SetEnabled(GetParam(kCabOn)->Bool());
 
     // InputGain + PreEQ → outputs[0] (AsymClipper reads from here)
     for (int s = 0; s < nFrames; ++s)
@@ -242,6 +244,9 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     // PostCompressor → float conversion (IronWallPanner uses float*, sample is double)
     for (int s = 0; s < nFrames; ++s)
         mMonoF[s] = static_cast<float>(mPostCompressor.Process(outputs[0][s]));
+
+    // CabSim: mono → mono (in-place)
+    mCabSim.ProcessBlock(mMonoF.data(), mMonoF.data(), nFrames);
 
     // IronWallPanner: mono → stereo
     const float width = static_cast<float>(GetParam(kWidth)->Value());

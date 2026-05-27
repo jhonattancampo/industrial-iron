@@ -6,6 +6,7 @@
 #include "src/dsp/PreEQ.h"
 #include "src/dsp/PostCompressor.h"
 #include "src/dsp/IronWallPanner.h"
+#include "src/dsp/CabSim.h"
 #include <vector>
 
 // Parameter indices — must match registration order in constructor
@@ -83,6 +84,7 @@ private:
     PreEQ           mPreEQ;
     AsymClipper     mAsymClipper;
     PostCompressor  mPostCompressor;
+    CabSim          mCabSim;
     IronWallPanner  mIronWall;
     float           mCorrelation  = 0.f;
     bool            mPhaseWarning = false;
