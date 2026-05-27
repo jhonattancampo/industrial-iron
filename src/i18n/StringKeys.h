@@ -10,6 +10,7 @@ enum class StringKey : int
     kToneLabel,
     kTightnessLabel,
     kWidthLabel,
+    kPanLabel,
     kOutputLabel,
     kCabLabel,
     kPresetLabel,
