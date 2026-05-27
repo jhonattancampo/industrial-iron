@@ -18,7 +18,7 @@ public:
     CorrelationMeterControl(const IRECT& bounds, std::atomic<float>& corr)
         : IControl(bounds), mCorr(corr) {}
 
-    void OnGUIIdle() override { SetDirty(false); }
+    void OnGUIIdle() override { SetDirty(true); }
 
     void Draw(IGraphics& g) override
     {
@@ -61,40 +61,33 @@ class WarningControl : public IControl
 {
 public:
     WarningControl(const IRECT& bounds, std::atomic<bool>& phaseWarn, const IText& text)
-        : IControl(bounds), mPhaseWarn(phaseWarn), mText(text) {}
+        : IControl(bounds), mPhaseWarn(phaseWarn), mText(text) { Hide(true); }
 
     void OnGUIIdle() override
     {
         const bool phase = mPhaseWarn.load();
-        // kGain == 0; Value() returns the normalized 0–1 range used at construction
         const bool clip  = GetDelegate()->GetParam(kGain)->Value() > 0.85;
-
-        const bool show = phase || clip;
+        const bool show  = phase || clip;
 
         if (show)
         {
-            if (phase)
-                mMsg = LS(kWarningPhaseCancel);
-            else
-                mMsg = LS(kWarningClipHot);
+            mMsg = phase ? LS(kWarningPhaseCancel) : LS(kWarningClipHot);
+            if (IsHidden()) { Hide(false); SetDirty(true); }
         }
-
-        if (show != mShowing)
+        else
         {
-            mShowing = show;
-            SetDirty(false);
+            if (!IsHidden()) { Hide(true); }
         }
     }
 
     void Draw(IGraphics& g) override
     {
-        if (mShowing && mMsg)
+        if (mMsg)
             g.DrawText(mText, mMsg, mRECT);
     }
 
 private:
     std::atomic<bool>& mPhaseWarn;
     IText              mText;
-    const char*        mMsg     = nullptr;
-    bool               mShowing = false;
+    const char*        mMsg = nullptr;
 };
