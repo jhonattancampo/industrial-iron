@@ -7,18 +7,23 @@ void IronWallPanner::OnReset(double sampleRate)
 {
     assert(sampleRate > 0.0);
 
-    mDelaySamples = static_cast<int>(sampleRate * 0.007);
-    mBufSize      = mDelaySamples + 64;
-    mBuf.assign(mBufSize, 0.f);
+    mDelayL   = static_cast<int>(std::ceil(sampleRate * 0.0035));
+    mDelayR   = static_cast<int>(std::ceil(sampleRate * 0.007));
+    mBufSizeL = mDelayL + 64;
+    mBufSizeR = mDelayR + 64;
 
-    mWritePos    = mDelaySamples;
-    mReadPos     = 0.f;
+    mBufL.assign(mBufSizeL, 0.f);
+    mBufR.assign(mBufSizeR, 0.f);
+    std::fill(mBufL.begin(), mBufL.end(), 0.f);
+    std::fill(mBufR.begin(), mBufR.end(), 0.f);
+
+    mWritePosL = mDelayL;
+    mWritePosR = mDelayR;
+    mReadPosR  = 0.f;
 
     mCorrelation = 1.f;
     mWarning     = false;
-    mSumLR       = 0.f;
-    mSumLL       = 0.f;
-    mSumRR       = 0.f;
+    mSumLR = mSumLL = mSumRR = 0.f;
     mCorrCounter = 0;
 }
 
@@ -39,36 +44,38 @@ bool IronWallPanner::GetWarning() const
 
 void IronWallPanner::ProcessBlock(float* mono, float* outL, float* outR, int nFrames)
 {
-    assert(mBufSize > 0);
+    assert(mBufSizeL > 0 && mBufSizeR > 0);
 
     for (int i = 0; i < nFrames; ++i)
     {
         const float in = mono[i];
 
-        // Write into circular buffer
-        mBuf[mWritePos % mBufSize] = in;
-        mWritePos++;
+        // --- L: 3.5ms clean delay (integer read, no pitch) ---
+        mBufL[mWritePosL % mBufSizeL] = in;
+        const float delayedL = mBufL[(mWritePosL - mDelayL + mBufSizeL) % mBufSizeL];
+        mWritePosL++;
 
-        // Fractional read for +2 cents pitch shift
-        const int   idx0    = static_cast<int>(mReadPos) % mBufSize;
-        const int   idx1    = (idx0 + 1) % mBufSize;
-        const float frac    = mReadPos - std::floor(mReadPos);
-        const float delayed = mBuf[idx0] + frac * (mBuf[idx1] - mBuf[idx0]);
+        // --- R: 7ms + 2-cent pitch shift ---
+        mBufR[mWritePosR % mBufSizeR] = in;
+        mWritePosR++;
 
-        mReadPos += kPitchRatio;
+        const int   idx0     = static_cast<int>(mReadPosR) % mBufSizeR;
+        const int   idx1     = (idx0 + 1) % mBufSizeR;
+        const float frac     = mReadPosR - std::floor(mReadPosR);
+        const float delayedR = mBufR[idx0] + frac * (mBufR[idx1] - mBufR[idx0]);
 
-        // Drift reset: kPitchRatio > 1.0 means mReadPos closes on mWritePos over time.
-        // Re-anchor by subtracting mDelaySamples so the read pointer stays ~7ms behind.
-        if ((static_cast<float>(mWritePos) - mReadPos) < 2.f)
-            mReadPos -= static_cast<float>(mDelaySamples);
+        mReadPosR += kPitchRatio;
+        if ((static_cast<float>(mWritePosR) - mReadPosR) < 2.f)
+            mReadPosR -= static_cast<float>(mDelayR);
 
-        const float L = in;
-        const float R = in + mWidth * (delayed - in); // lerp(in, delayed, mWidth)
+        // Width crossfade — delayedL as base so width=0 → centered mono at 3.5ms
+        const float L = delayedL;
+        const float R = delayedL + mWidth * (delayedR - delayedL);
 
         outL[i] = L;
         outR[i] = R;
 
-        // Correlation accumulation
+        // Correlation accumulation (unchanged)
         mSumLR += L * R;
         mSumLL += L * L;
         mSumRR += R * R;
@@ -80,9 +87,7 @@ void IronWallPanner::ProcessBlock(float* mono, float* outL, float* outR, int nFr
             mCorrelation = std::clamp(mCorrelation, -1.f, 1.f);
             mWarning     = (mCorrelation < 0.5f);
 
-            mSumLR       = 0.f;
-            mSumLL       = 0.f;
-            mSumRR       = 0.f;
+            mSumLR = mSumLL = mSumRR = 0.f;
             mCorrCounter = 0;
         }
     }

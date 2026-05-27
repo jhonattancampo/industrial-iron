@@ -13,6 +13,7 @@ constexpr const char* kStrings_EN[static_cast<int>(StringKey::kCOUNT)] =
     "TONE",                  // kToneLabel
     "TIGHTNESS",             // kTightnessLabel
     "WIDTH",                 // kWidthLabel
+    "PAN",                   // kPanLabel
     "OUTPUT",                // kOutputLabel
     "CAB",                   // kCabLabel
     "PRESET",                // kPresetLabel

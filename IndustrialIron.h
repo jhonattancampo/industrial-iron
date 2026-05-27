@@ -7,6 +7,7 @@
 #include "src/dsp/PostCompressor.h"
 #include "src/dsp/IronWallPanner.h"
 #include "src/dsp/CabSim.h"
+#include <atomic>
 #include <vector>
 
 // Parameter indices — must match registration order in constructor
@@ -19,6 +20,7 @@ enum EParams
     kCabOn,          // Cab sim toggle 0/1
     kParamOutput,    // Output trim 0.0–1.0 (prefixed to avoid clash with iplug::kOutput)
     kPreset,         // Preset selector 0/1/2
+    kPan,            // Equal-power pan, -1.0 to +1.0
     kNumParams
 };
 
@@ -34,6 +36,9 @@ enum ECtrlTags
     kCtrlTagPresetRadio,
     kCtrlTagTitle,
     kCtrlTagVersion,
+    kCtrlTagPanKnob,
+    kCtrlTagCorrelationMeter,
+    kCtrlTagWarning,
     kNumCtrlTags
 };
 
@@ -69,13 +74,14 @@ private:
         float tightness;
         float width;
         float cabOn;
+        float pan;
     };
 
     static constexpr PresetData kPresets[3] =
     {
-        { 0.80f, 0.45f, 0.70f, 0.90f, 1.f },  // Rhythm Heavy
-        { 0.65f, 0.65f, 0.50f, 0.60f, 1.f },  // Lead Cut
-        { 0.30f, 0.50f, 0.20f, 0.00f, 0.f },  // DI Clean
+        { 0.80f, 0.45f, 0.70f, 0.90f, 1.f, 0.0f },  // Rhythm Heavy
+        { 0.65f, 0.65f, 0.50f, 0.60f, 1.f, 0.0f },  // Lead Cut
+        { 0.30f, 0.50f, 0.20f, 0.00f, 0.f, 0.0f },  // DI Clean
     };
 
     int mCurrentPreset = -1;  // -1 = no preset active
@@ -84,8 +90,8 @@ private:
     PostCompressor  mPostCompressor;
     CabSim          mCabSim;
     IronWallPanner  mIronWall;
-    float           mCorrelation  = 0.f;
-    bool            mPhaseWarning = false;
+    std::atomic<float> mCorrelation{0.f};
+    std::atomic<bool>  mPhaseWarning{false};
 
     // Conversion buffers for double→float→double around IronWallPanner
     // Pre-allocated in OnReset() to avoid heap allocation in ProcessBlock
