@@ -49,38 +49,40 @@ private:
 
 // WarningControl ---------------------------------------------------------------
 // Shows a warning string when phase cancellation or hot input is detected.
-// Hidden (draws nothing) when both conditions are false.
+// Always attached and visible to the graphics engine; renders nothing when
+// no warning is active. (iPlug2 does not call OnGUIIdle on hidden controls
+// in some hosting configurations, so we keep the control always visible and
+// draw nothing instead of hiding.)
 class WarningControl : public IControl
 {
 public:
     WarningControl(const IRECT& bounds, std::atomic<bool>& phaseWarn, const IText& text)
-        : IControl(bounds), mPhaseWarn(phaseWarn), mText(text) { Hide(true); }
+        : IControl(bounds), mPhaseWarn(phaseWarn), mText(text) {}
 
     void OnGUIIdle() override
     {
         const bool phase = mPhaseWarn.load();
-        const bool clip  = GetDelegate()->GetParam(kGain)->Value() > 0.85;
+        const bool clip  = GetDelegate() && GetDelegate()->GetParam(kGain)->Value() > 0.85;
         const bool show  = phase || clip;
 
-        if (show)
+        if (show != mShowing)
         {
-            mMsg = phase ? LS(kWarningPhaseCancel) : LS(kWarningClipHot);
-            if (IsHidden()) { Hide(false); SetDirty(true); }
-        }
-        else
-        {
-            if (!IsHidden()) { Hide(true); }
+            mShowing = show;
+            if (show)
+                mMsg = phase ? LS(kWarningPhaseCancel) : LS(kWarningClipHot);
+            SetDirty(true);
         }
     }
 
     void Draw(IGraphics& g) override
     {
-        if (mMsg)
-            g.DrawText(mText, mMsg, mRECT);
+        if (!mShowing || !mMsg) return;  // transparent when inactive
+        g.DrawText(mText, mMsg, mRECT);
     }
 
 private:
     std::atomic<bool>& mPhaseWarn;
     IText              mText;
-    const char*        mMsg = nullptr;
+    const char*        mMsg     = nullptr;
+    bool               mShowing = false;
 };
