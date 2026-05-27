@@ -44,3 +44,14 @@ Any DSP module that includes `Extras/Oversampler.h` must add:
   #include <cassert>
 before that include, or compilation fails as a separate translation unit.
 Apply this to every new file in src/dsp/ that uses oversampling.
+
+### Preset loading / forcing UI redraw
+To push param values FROM delegate TO UI (preset load, state restore):
+  - Set each param: GetParam(idx)->SetNormalized(value)
+  - Then call: SendCurrentParamValuesFromDelegate()
+  
+DO NOT use SendParameterValueFromUI for this — it goes UI→Delegate 
+(for automation recording only) and does NOT update knob visuals.
+
+For preset selector UI: use IVRadioButtonControl, not IVButtonControl.
+Toggle-off: SetValue(-1.0) → no button highlighted (index = -1).

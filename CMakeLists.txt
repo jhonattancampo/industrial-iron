@@ -19,6 +19,8 @@ iplug_add_plugin(${PROJECT_NAME}
     src/dsp/PostCompressor.h
     src/dsp/IronWallPanner.cpp
     src/dsp/IronWallPanner.h
+    src/dsp/CabSim.cpp
+    src/dsp/CabSim.h
     resources/resource.h
     src/i18n/StringKeys.h
     src/i18n/Strings_EN.h

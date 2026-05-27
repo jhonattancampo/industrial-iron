@@ -137,35 +137,32 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
             new IVToggleControl(cabRect, kCabOn, LS(kCabLabel), toggleStyle),
             kCtrlTagCabToggle);
 
-        // ---- Preset selector (3 buttons acting as a radio group) ----
-        const float presetBtnW = presetArea.W() / 3.f;
-        const IRECT p0 = presetArea.GetGridCell(0, 0, 1, 3).GetPadded(-3.f);
-        const IRECT p1 = presetArea.GetGridCell(0, 1, 1, 3).GetPadded(-3.f);
-        const IRECT p2 = presetArea.GetGridCell(0, 2, 1, 3).GetPadded(-3.f);
-
+        // ---- Preset selector — IVRadioButtonControl with toggle-off ----
+        // Value encoding: 0.0=preset0, 0.5=preset1, 1.0=preset2, -1.0=none active.
+        // GetSelectedIdx() = int(0.5 + value * (numStates-1)); -1.0 → idx -1 → no highlight.
         pGraphics->AttachControl(
-            new IVButtonControl(p0, [&](IControl* pCtrl) {
-                GetParam(kPreset)->Set(0.);
-                InformHostOfParamChange(kPreset, 0.);
-                LoadPreset(0);
-                pCtrl->GetDelegate()->SendParameterValueFromUI(kPreset, 0.);
-            }, LS(kPresetRhythmHeavy), presetStyle), kCtrlTagPreset0);
-
-        pGraphics->AttachControl(
-            new IVButtonControl(p1, [&](IControl* pCtrl) {
-                GetParam(kPreset)->Set(0.5);
-                InformHostOfParamChange(kPreset, 0.5);
-                LoadPreset(1);
-                pCtrl->GetDelegate()->SendParameterValueFromUI(kPreset, 0.5);
-            }, LS(kPresetLeadCut), presetStyle), kCtrlTagPreset1);
-
-        pGraphics->AttachControl(
-            new IVButtonControl(p2, [&](IControl* pCtrl) {
-                GetParam(kPreset)->Set(1.);
-                InformHostOfParamChange(kPreset, 1.);
-                LoadPreset(2);
-                pCtrl->GetDelegate()->SendParameterValueFromUI(kPreset, 1.);
-            }, LS(kPresetDIClean), presetStyle), kCtrlTagPreset2);
+            new IVRadioButtonControl(
+                presetArea,
+                [&](IControl* pCtrl) {
+                    const int clickedIdx = static_cast<int>(std::round(pCtrl->GetValue() * 2.0));
+                    if (clickedIdx == mCurrentPreset) {
+                        mCurrentPreset = -1;
+                        pCtrl->SetValue(-1.0);
+                        pCtrl->SetDirty(false);
+                    } else {
+                        LoadPreset(clickedIdx);
+                    }
+                },
+                { LS(kPresetRhythmHeavy), LS(kPresetLeadCut), LS(kPresetDIClean) },
+                "",
+                presetStyle,
+                EVShape::Rectangle,
+                EDirection::Horizontal
+            ),
+            kCtrlTagPresetRadio
+        );
+        // No preset active on startup
+        pGraphics->GetControlWithTag(kCtrlTagPresetRadio)->SetValue(-1.0);
     };
 #endif
 }
@@ -176,16 +173,41 @@ void IndustrialIron::LoadPreset(int presetIdx)
     if (presetIdx < 0 || presetIdx > 2) return;
     mCurrentPreset = presetIdx;
     const PresetData& p = kPresets[presetIdx];
-    GetParam(kGain)->Set(p.gain);
-    GetParam(kTone)->Set(p.tone);
-    GetParam(kTightness)->Set(p.tightness);
-    GetParam(kWidth)->Set(p.width);
-    GetParam(kCabOn)->Set(p.cabOn);
-    InformHostOfParamChange(kGain,      p.gain);
-    InformHostOfParamChange(kTone,      p.tone);
-    InformHostOfParamChange(kTightness, p.tightness);
-    InformHostOfParamChange(kWidth,     p.width);
-    InformHostOfParamChange(kCabOn,     p.cabOn);
+
+    // SetNormalized sets the stored value. SendCurrentParamValuesFromDelegate
+    // then calls SendParameterValueFromDelegate for every param, which calls
+    // SetValueFromDelegate on each linked UI control — this is what makes
+    // knobs visually update. SendParameterValueFromUI goes the wrong direction
+    // (UI→Delegate) and does not update controls. This was the root cause bug.
+    GetParam(kGain)->SetNormalized(p.gain);
+    GetParam(kTone)->SetNormalized(p.tone);
+    GetParam(kTightness)->SetNormalized(p.tightness);
+    GetParam(kWidth)->SetNormalized(p.width);
+    GetParam(kCabOn)->SetNormalized(p.cabOn);
+    GetParam(kPreset)->Set(static_cast<double>(presetIdx));
+    SendCurrentParamValuesFromDelegate();
+
+    auto notifyHost = [&](int idx, double normVal) {
+        BeginInformHostOfParamChange(idx);
+        InformHostOfParamChange(idx, normVal);
+        EndInformHostOfParamChange(idx);
+    };
+    notifyHost(kGain,       p.gain);
+    notifyHost(kTone,       p.tone);
+    notifyHost(kTightness,  p.tightness);
+    notifyHost(kWidth,      p.width);
+    notifyHost(kCabOn,      p.cabOn);
+
+#if IPLUG_EDITOR
+    if (auto* pUI = GetUI())
+    {
+        if (auto* pCtrl = pUI->GetControlWithTag(kCtrlTagPresetRadio))
+        {
+            pCtrl->SetValue(static_cast<double>(presetIdx) / 2.0);
+            pCtrl->SetDirty(false);
+        }
+    }
+#endif
 }
 
 #if IPLUG_EDITOR
@@ -207,6 +229,7 @@ void IndustrialIron::OnReset()
     mPreEQ.OnReset(sr);
     mAsymClipper.OnReset(sr);
     mPostCompressor.OnReset(sr);
+    mCabSim.OnReset(sr);
     mIronWall.OnReset(sr);
     SetLatency(mAsymClipper.GetLatency());
 
@@ -218,7 +241,7 @@ void IndustrialIron::OnReset()
 
 void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-    // Phase 3 chain: InputGain → PreEQ → AsymClipper → PostCompressor → IronWallPanner → OutputGain
+    // Phase 4 chain: InputGain → PreEQ → AsymClipper → PostCompressor → CabSim → IronWallPanner → OutputGain
 
     // kGain: 0–1 → -20 to +40 dB
     const double gainDb  = -20.0 + 60.0 * GetParam(kGain)->Value();
@@ -228,9 +251,10 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     const double outDb   = -20.0 + 26.0 * GetParam(kParamOutput)->Value();
     const double outLin  = std::pow(10.0, outDb  / 20.0);
 
-    // Update tone/tightness once per block (coefficient update is cheap, no audio artifacts)
+    // Update tone/tightness/cabOn once per block (coefficient update is cheap, no audio artifacts)
     mPreEQ.SetTone(static_cast<float>(GetParam(kTone)->Value()));
     mPostCompressor.SetTightness(static_cast<float>(GetParam(kTightness)->Value()));
+    mCabSim.SetEnabled(GetParam(kCabOn)->Bool());
 
     // InputGain + PreEQ → outputs[0] (AsymClipper reads from here)
     for (int s = 0; s < nFrames; ++s)
@@ -242,6 +266,9 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     // PostCompressor → float conversion (IronWallPanner uses float*, sample is double)
     for (int s = 0; s < nFrames; ++s)
         mMonoF[s] = static_cast<float>(mPostCompressor.Process(outputs[0][s]));
+
+    // CabSim: mono → mono (in-place)
+    mCabSim.ProcessBlock(mMonoF.data(), mMonoF.data(), nFrames);
 
     // IronWallPanner: mono → stereo
     const float width = static_cast<float>(GetParam(kWidth)->Value());
