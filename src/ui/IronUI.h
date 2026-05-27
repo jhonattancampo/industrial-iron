@@ -22,44 +22,25 @@ public:
 
     void Draw(IGraphics& g) override
     {
-        const float c = mCorr.load();
+        const float c    = mCorr.load();
+        const float absc = std::fabs(c);
 
-        // Background
-        g.FillRect(IColor{255, 20, 20, 20}, mRECT);
+        // Background: solid color based on correlation quality
+        IColor bgColor;
+        if      (absc > 0.8f) bgColor = IColor{255,   0, 204,  68};  // green
+        else if (absc > 0.5f) bgColor = IColor{255, 204, 170,   0};  // yellow
+        else                  bgColor = IColor{255, 204,  34,   0};  // red
 
-        const float cx     = mRECT.MW();
-        const float spread = (1.0f - std::max(c, 0.0f)) * 0.5f;  // 0..0.5
-        const float halfW  = mRECT.W() * spread;
+        g.FillRect(bgColor, mRECT);
 
-        if (halfW > 0.5f)
-        {
-            // Zone boundaries as fraction of half-width of full bar
-            const float halfFull = mRECT.W() * 0.5f;
-            const float z1 = halfFull * 0.25f;  // green fills inner 25%
-            const float z2 = halfFull * 0.55f;  // yellow fills up to 55%
-            // red fills beyond 55% (to halfW)
-
-            // Draw from outside in so inner zones paint over outer
-            // Red zone (outermost)
-            g.FillRect(IColor{255, 204, 34, 0},
-                IRECT{cx - halfW, mRECT.T, cx + halfW, mRECT.B});
-
-            // Yellow zone (overwrites inner portion of red)
-            if (halfW > 0.f)
-                g.FillRect(IColor{255, 204, 170, 0},
-                    IRECT{cx - std::min(halfW, z2), mRECT.T, cx + std::min(halfW, z2), mRECT.B});
-
-            // Green zone (overwrites inner portion of yellow)
-            if (halfW > 0.f)
-                g.FillRect(IColor{255, 0, 204, 68},
-                    IRECT{cx - std::min(halfW, z1), mRECT.T, cx + std::min(halfW, z1), mRECT.B});
-        }
-
-        // Center tick
-        g.DrawLine(IColor{255, 255, 255, 255}, cx, mRECT.T, cx, mRECT.B, nullptr, 1.5f);
+        // Moving white indicator line — maps corr [-1..1] to full width
+        const float t = (c + 1.0f) / 2.0f;  // 0..1
+        const float x = mRECT.L + t * mRECT.W();
+        g.FillRect(IColor{255, 255, 255, 255},
+                   IRECT{x - 1.5f, mRECT.T, x + 1.5f, mRECT.B});
 
         // Border
-        g.DrawRect(IColor{255, 80, 80, 80}, mRECT);
+        g.DrawRect(IColor{255, 60, 60, 60}, mRECT);
     }
 
 private:
