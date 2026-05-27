@@ -31,9 +31,7 @@ enum ECtrlTags
     kCtrlTagWidthKnob,
     kCtrlTagOutputKnob,
     kCtrlTagCabToggle,
-    kCtrlTagPreset0,
-    kCtrlTagPreset1,
-    kCtrlTagPreset2,
+    kCtrlTagPresetRadio,
     kCtrlTagTitle,
     kCtrlTagVersion,
     kNumCtrlTags
@@ -80,7 +78,7 @@ private:
         { 0.30f, 0.50f, 0.20f, 0.00f, 0.f },  // DI Clean
     };
 
-    int mCurrentPreset = 0;
+    int mCurrentPreset = -1;  // -1 = no preset active
     PreEQ           mPreEQ;
     AsymClipper     mAsymClipper;
     PostCompressor  mPostCompressor;

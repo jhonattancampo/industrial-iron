@@ -137,35 +137,32 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
             new IVToggleControl(cabRect, kCabOn, LS(kCabLabel), toggleStyle),
             kCtrlTagCabToggle);
 
-        // ---- Preset selector (3 buttons acting as a radio group) ----
-        const float presetBtnW = presetArea.W() / 3.f;
-        const IRECT p0 = presetArea.GetGridCell(0, 0, 1, 3).GetPadded(-3.f);
-        const IRECT p1 = presetArea.GetGridCell(0, 1, 1, 3).GetPadded(-3.f);
-        const IRECT p2 = presetArea.GetGridCell(0, 2, 1, 3).GetPadded(-3.f);
-
+        // ---- Preset selector — IVRadioButtonControl with toggle-off ----
+        // Value encoding: 0.0=preset0, 0.5=preset1, 1.0=preset2, -1.0=none active.
+        // GetSelectedIdx() = int(0.5 + value * (numStates-1)); -1.0 → idx -1 → no highlight.
         pGraphics->AttachControl(
-            new IVButtonControl(p0, [&](IControl* pCtrl) {
-                BeginInformHostOfParamChange(kPreset);
-                SendParameterValueFromUI(kPreset, 0.0);
-                EndInformHostOfParamChange(kPreset);
-                LoadPreset(0);
-            }, LS(kPresetRhythmHeavy), presetStyle), kCtrlTagPreset0);
-
-        pGraphics->AttachControl(
-            new IVButtonControl(p1, [&](IControl* pCtrl) {
-                BeginInformHostOfParamChange(kPreset);
-                SendParameterValueFromUI(kPreset, 0.5);
-                EndInformHostOfParamChange(kPreset);
-                LoadPreset(1);
-            }, LS(kPresetLeadCut), presetStyle), kCtrlTagPreset1);
-
-        pGraphics->AttachControl(
-            new IVButtonControl(p2, [&](IControl* pCtrl) {
-                BeginInformHostOfParamChange(kPreset);
-                SendParameterValueFromUI(kPreset, 1.0);
-                EndInformHostOfParamChange(kPreset);
-                LoadPreset(2);
-            }, LS(kPresetDIClean), presetStyle), kCtrlTagPreset2);
+            new IVRadioButtonControl(
+                presetArea,
+                [&](IControl* pCtrl) {
+                    const int clickedIdx = static_cast<int>(std::round(pCtrl->GetValue() * 2.0));
+                    if (clickedIdx == mCurrentPreset) {
+                        mCurrentPreset = -1;
+                        pCtrl->SetValue(-1.0);
+                        pCtrl->SetDirty(false);
+                    } else {
+                        LoadPreset(clickedIdx);
+                    }
+                },
+                { LS(kPresetRhythmHeavy), LS(kPresetLeadCut), LS(kPresetDIClean) },
+                "",
+                presetStyle,
+                EVShape::Rectangle,
+                EDirection::Horizontal
+            ),
+            kCtrlTagPresetRadio
+        );
+        // No preset active on startup
+        pGraphics->GetControlWithTag(kCtrlTagPresetRadio)->SetValue(-1.0);
     };
 #endif
 }
@@ -177,31 +174,37 @@ void IndustrialIron::LoadPreset(int presetIdx)
     mCurrentPreset = presetIdx;
     const PresetData& p = kPresets[presetIdx];
 
-    // SendParameterValueFromUI sets the value, notifies the host, AND calls
-    // OnParamChangeUI which marks knob controls dirty so they visually update.
-    // InformHostOfParamChange alone does NOT do the UI update — that was the bug.
-    auto notify = [&](int paramIdx, double normalizedValue) {
-        BeginInformHostOfParamChange(paramIdx);
-        SendParameterValueFromUI(paramIdx, normalizedValue);
-        EndInformHostOfParamChange(paramIdx);
-    };
+    // SetNormalized sets the stored value. SendCurrentParamValuesFromDelegate
+    // then calls SendParameterValueFromDelegate for every param, which calls
+    // SetValueFromDelegate on each linked UI control — this is what makes
+    // knobs visually update. SendParameterValueFromUI goes the wrong direction
+    // (UI→Delegate) and does not update controls. This was the root cause bug.
+    GetParam(kGain)->SetNormalized(p.gain);
+    GetParam(kTone)->SetNormalized(p.tone);
+    GetParam(kTightness)->SetNormalized(p.tightness);
+    GetParam(kWidth)->SetNormalized(p.width);
+    GetParam(kCabOn)->SetNormalized(p.cabOn);
+    GetParam(kPreset)->Set(static_cast<double>(presetIdx));
+    SendCurrentParamValuesFromDelegate();
 
-    notify(kGain,       p.gain);
-    notify(kTone,       p.tone);
-    notify(kTightness,  p.tightness);
-    notify(kWidth,      p.width);
-    notify(kCabOn,      p.cabOn);
+    auto notifyHost = [&](int idx, double normVal) {
+        BeginInformHostOfParamChange(idx);
+        InformHostOfParamChange(idx, normVal);
+        EndInformHostOfParamChange(idx);
+    };
+    notifyHost(kGain,       p.gain);
+    notifyHost(kTone,       p.tone);
+    notifyHost(kTightness,  p.tightness);
+    notifyHost(kWidth,      p.width);
+    notifyHost(kCabOn,      p.cabOn);
 
 #if IPLUG_EDITOR
     if (auto* pUI = GetUI())
     {
-        for (int i = 0; i < 3; ++i)
+        if (auto* pCtrl = pUI->GetControlWithTag(kCtrlTagPresetRadio))
         {
-            if (auto* pCtrl = pUI->GetControlWithTag(kCtrlTagPreset0 + i))
-            {
-                pCtrl->SetValue(i == presetIdx ? 1.0 : 0.0);
-                pCtrl->SetDirty(false);
-            }
+            pCtrl->SetValue(static_cast<double>(presetIdx) / 2.0);
+            pCtrl->SetDirty(false);
         }
     }
 #endif
