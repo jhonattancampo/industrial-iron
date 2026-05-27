@@ -25,22 +25,34 @@ public:
         const float c = mCorr.load();
 
         // Background
-        g.FillRect(IColor{255, 30, 30, 30}, mRECT);
+        g.FillRect(IColor{255, 20, 20, 20}, mRECT);
 
-        // Active fill — spreads from center; higher correlation = narrower bar
-        const float spread  = (1.0f - std::max(c, 0.0f)) * 0.5f;
-        const float cx      = mRECT.MW();
-        const float halfW   = mRECT.W() * spread;
-
-        IColor barColor;
-        if      (c > 0.7f) barColor = IColor{255,   0, 180,  80};  // green
-        else if (c > 0.4f) barColor = IColor{255, 200, 160,   0};  // amber
-        else               barColor = IColor{255, 204,  34,   0};  // red (accent)
+        const float cx     = mRECT.MW();
+        const float spread = (1.0f - std::max(c, 0.0f)) * 0.5f;  // 0..0.5
+        const float halfW  = mRECT.W() * spread;
 
         if (halfW > 0.5f)
         {
-            IRECT fill { cx - halfW, mRECT.T, cx + halfW, mRECT.B };
-            g.FillRect(barColor, fill);
+            // Zone boundaries as fraction of half-width of full bar
+            const float halfFull = mRECT.W() * 0.5f;
+            const float z1 = halfFull * 0.25f;  // green fills inner 25%
+            const float z2 = halfFull * 0.55f;  // yellow fills up to 55%
+            // red fills beyond 55% (to halfW)
+
+            // Draw from outside in so inner zones paint over outer
+            // Red zone (outermost)
+            g.FillRect(IColor{255, 204, 34, 0},
+                IRECT{cx - halfW, mRECT.T, cx + halfW, mRECT.B});
+
+            // Yellow zone (overwrites inner portion of red)
+            if (halfW > 0.f)
+                g.FillRect(IColor{255, 204, 170, 0},
+                    IRECT{cx - std::min(halfW, z2), mRECT.T, cx + std::min(halfW, z2), mRECT.B});
+
+            // Green zone (overwrites inner portion of yellow)
+            if (halfW > 0.f)
+                g.FillRect(IColor{255, 0, 204, 68},
+                    IRECT{cx - std::min(halfW, z1), mRECT.T, cx + std::min(halfW, z1), mRECT.B});
         }
 
         // Center tick

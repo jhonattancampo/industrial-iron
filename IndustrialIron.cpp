@@ -95,20 +95,23 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
 
         // ---- IVStyle for knobs ----
         const IVStyle knobStyle = IVStyle()
-            .WithColor(kBG,     kColorBackground)
-            .WithColor(kFG,     kColorKnobTrack)
-            .WithColor(kX1,     kColorAccent)
-            .WithColor(kHL,     kColorAccent)
-            .WithColor(kON,     kColorAccent)
-            .WithLabelText(labelText)
-            .WithValueText(labelText.WithSize(9.f));
+            .WithColor(kBG,  kColorBackground)
+            .WithColor(kFG,  IColor(255, 26, 26, 26))    // darker knob body
+            .WithColor(kX1,  kColorAccent)               // arc #CC2200
+            .WithColor(kHL,  kColorAccent)
+            .WithColor(kON,  kColorAccent)
+            .WithColor(kSH,  IColor(255, 10, 10, 10))    // shadow
+            .WithLabelText(IText(11.f, IColor(255,255,255,255), "Roboto-Regular"))
+            .WithValueText(IText(9.f,  IColor(255,180,180,180), "Roboto-Regular"));
 
-        const IVStyle toggleStyle = IVStyle()
-            .WithColor(kBG,   kColorBackground)
-            .WithColor(kFG,   kColorKnobTrack)
-            .WithColor(kX1,   kColorAccent)
-            .WithColor(kON,   kColorAccent)
-            .WithLabelText(labelText);
+        const IVStyle cabStyle = IVStyle()
+            .WithColor(kBG,  kColorBackground)
+            .WithColor(kFG,  IColor(255, 26, 26, 26))    // body
+            .WithColor(kX1,  kColorAccent)               // ON fill #CC2200
+            .WithColor(kON,  kColorAccent)               // active
+            .WithColor(kHL,  kColorAccent)
+            .WithColor(kSH,  IColor(255, 10, 10, 10))
+            .WithLabelText(IText(11.f, IColor(255,255,255,255), "Roboto-Regular"));
 
         const IVStyle presetStyle = IVStyle()
             .WithColor(kBG,  kColorPresetOff)
@@ -143,7 +146,7 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
 
         // ---- CAB toggle ----
         pGraphics->AttachControl(
-            new IVToggleControl(cabRect, kCabOn, LS(kCabLabel), toggleStyle),
+            new IVToggleControl(cabRect, kCabOn, LS(kCabLabel), cabStyle),
             kCtrlTagCabToggle);
 
         // ---- Correlation meter label ----
