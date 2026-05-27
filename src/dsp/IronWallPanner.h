@@ -12,12 +12,16 @@ public:
     bool  GetWarning() const;
 
 private:
-    std::vector<float> mBuf;
-    int   mBufSize      = 0;
-    int   mWritePos     = 0;
-    float mReadPos      = 0.f;
-    int   mDelaySamples = 0;
-    float mWidth        = 1.f;
+    std::vector<float> mBufL;
+    std::vector<float> mBufR;
+    int   mBufSizeL  = 0;
+    int   mBufSizeR  = 0;
+    int   mWritePosL = 0;
+    int   mWritePosR = 0;
+    float mReadPosR  = 0.f;   // fractional read for R pitch shift
+    int   mDelayL    = 0;
+    int   mDelayR    = 0;
+    float mWidth     = 1.f;
     float mCorrelation  = 1.f;
     bool  mWarning      = false;
 
