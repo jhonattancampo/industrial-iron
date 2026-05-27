@@ -207,12 +207,18 @@ void IndustrialIron::OnReset()
     mPreEQ.OnReset(sr);
     mAsymClipper.OnReset(sr);
     mPostCompressor.OnReset(sr);
+    mIronWall.OnReset(sr);
     SetLatency(mAsymClipper.GetLatency());
+
+    const int blockSize = GetBlockSize();
+    mMonoF.resize(blockSize);
+    mOutLF.resize(blockSize);
+    mOutRF.resize(blockSize);
 }
 
 void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-    // Phase 2b chain: InputGain → PreEQ → AsymClipper → PostCompressor → OutputGain
+    // Phase 3 chain: InputGain → PreEQ → AsymClipper → PostCompressor → IronWallPanner → OutputGain
 
     // kGain: 0–1 → -20 to +40 dB
     const double gainDb  = -20.0 + 60.0 * GetParam(kGain)->Value();
@@ -233,12 +239,24 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     // Hard clip with x4 oversampling (in-place)
     mAsymClipper.ProcessBlock(outputs[0], outputs[0], nFrames);
 
-    // PostCompressor + OutputGain → fan out to both channels (IronWallPanner Phase 3)
+    // PostCompressor → float conversion (IronWallPanner uses float*, sample is double)
+    for (int s = 0; s < nFrames; ++s)
+        mMonoF[s] = static_cast<float>(mPostCompressor.Process(outputs[0][s]));
+
+    // IronWallPanner: mono → stereo
+    const float width = static_cast<float>(GetParam(kWidth)->Value());
+    mIronWall.SetWidth(width);
+    mIronWall.ProcessBlock(mMonoF.data(), mOutLF.data(), mOutRF.data(), nFrames);
+
+    // OutputGain + copy back to double outputs
     for (int s = 0; s < nFrames; ++s)
     {
-        const sample v = static_cast<sample>(mPostCompressor.Process(outputs[0][s]) * outLin);
-        outputs[0][s] = v;
-        outputs[1][s] = v;
+        outputs[0][s] = static_cast<sample>(mOutLF[s] * outLin);
+        outputs[1][s] = static_cast<sample>(mOutRF[s] * outLin);
     }
+
+    // Store metering state for UI polling (Phase 5)
+    mCorrelation  = mIronWall.GetCorrelation();
+    mPhaseWarning = mIronWall.GetWarning();
 }
 #endif
