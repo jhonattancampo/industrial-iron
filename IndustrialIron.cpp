@@ -132,23 +132,18 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
             kCtrlTagVersion);
 
         // ---- 6 Knobs ----
-        // Post-construction SetColor is a fallback in case the IVStyle constructor
-        // path is not fully applied (e.g., the kX1 arc color may not render at
-        // small sizes without explicit override). IVStyle is still the primary path.
-        auto attachKnob = [&](const IRECT& r, int paramIdx, const char* label, int ctrlTag) {
-            auto* pKnob = new IVKnobControl(r, paramIdx, label, knobStyle);
-            pKnob->SetColor(kX1, kColorAccent);                    // arc #CC2200
-            pKnob->SetColor(kFG, IColor(255, 26, 26, 26));         // body dark
-            pKnob->SetColor(kBG, kColorBackground);                // bg near-black
-            pGraphics->AttachControl(pKnob, ctrlTag);
-        };
-
-        attachKnob(gainRect,   kGain,        LS(kGainLabel),      kCtrlTagGainKnob);
-        attachKnob(toneRect,   kTone,        LS(kToneLabel),       kCtrlTagToneKnob);
-        attachKnob(tightRect,  kTightness,   LS(kTightnessLabel),  kCtrlTagTightnessKnob);
-        attachKnob(widthRect,  kWidth,       LS(kWidthLabel),      kCtrlTagWidthKnob);
-        attachKnob(panRect,    kPan,         LS(kPanLabel),        kCtrlTagPanKnob);
-        attachKnob(outputRect, kParamOutput, LS(kOutputLabel),     kCtrlTagOutputKnob);
+        pGraphics->AttachControl(
+            new IVKnobControl(gainRect,   kGain,        LS(kGainLabel),      knobStyle), kCtrlTagGainKnob);
+        pGraphics->AttachControl(
+            new IVKnobControl(toneRect,   kTone,        LS(kToneLabel),       knobStyle), kCtrlTagToneKnob);
+        pGraphics->AttachControl(
+            new IVKnobControl(tightRect,  kTightness,   LS(kTightnessLabel),  knobStyle), kCtrlTagTightnessKnob);
+        pGraphics->AttachControl(
+            new IVKnobControl(widthRect,  kWidth,       LS(kWidthLabel),      knobStyle), kCtrlTagWidthKnob);
+        pGraphics->AttachControl(
+            new IVKnobControl(panRect,    kPan,         LS(kPanLabel),        knobStyle), kCtrlTagPanKnob);
+        pGraphics->AttachControl(
+            new IVKnobControl(outputRect, kParamOutput, LS(kOutputLabel),     knobStyle), kCtrlTagOutputKnob);
 
         // ---- CAB toggle ----
         pGraphics->AttachControl(
