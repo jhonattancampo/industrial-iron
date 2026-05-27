@@ -55,3 +55,15 @@ DO NOT use SendParameterValueFromUI for this — it goes UI→Delegate
 
 For preset selector UI: use IVRadioButtonControl, not IVButtonControl.
 Toggle-off: SetValue(-1.0) → no button highlighted (index = -1).
+
+### UI Control overrides (iPlug2OOS specific)
+- Override `Draw(IGraphics& g)` NOT `OnDraw()` — OnDraw doesn't exist
+- Override `OnGUIIdle()` NOT `OnIdle()` — for polling in custom controls
+- `IText` constructed directly: `IText(size, color)` — no `.WithColor()` chaining
+
+### USE_IDLE_CALLS no está definido en este proyecto
+OnGUIIdle() NUNCA se llama — es código muerto gateado por #ifdef USE_IDLE_CALLS.
+Para polling per-frame en custom controls, usar:
+  SetAnimation([](IControl*) {});  // en el constructor
+Esto hace que IsDirty() retorne true siempre → redraw cada frame.
+El poll del valor va directamente en Draw(), no en OnGUIIdle().
