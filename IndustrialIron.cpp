@@ -261,6 +261,8 @@ void IndustrialIron::OnReset()
     mPostCompressor.OnReset(sr);
     mCabSim.OnReset(sr);
     mIronWall.OnReset(sr);
+    mCorrelation.store(0.f);
+    mPhaseWarning.store(false);
     SetLatency(mAsymClipper.GetLatency());
 
     const int blockSize = GetBlockSize();

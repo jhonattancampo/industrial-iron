@@ -14,6 +14,8 @@ void IronWallPanner::OnReset(double sampleRate)
 
     mBufL.assign(mBufSizeL, 0.f);
     mBufR.assign(mBufSizeR, 0.f);
+    std::fill(mBufL.begin(), mBufL.end(), 0.f);
+    std::fill(mBufR.begin(), mBufR.end(), 0.f);
 
     mWritePosL = mDelayL;
     mWritePosR = mDelayR;
