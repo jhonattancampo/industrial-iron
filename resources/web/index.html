@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=800, height=300, initial-scale=1.0">
+  <title>Industrial Iron</title>
+  <style>
+    /* ── Reset ─────────────────────────────────────────── */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 800px;
+      height: 300px;
+      overflow: hidden;
+      background: #0A0A0A;
+      color: #AAAAAA;
+      font-family: 'Courier New', Courier, monospace;
+      -webkit-user-select: none;
+      user-select: none;
+      cursor: default;
+    }
+
+    /* ── App shell — fixed 800×300 ──────────────────────── */
+    #app {
+      width: 800px;
+      height: 300px;
+      display: flex;
+      flex-direction: column;
+      background: #0A0A0A;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    #header {
+      height: 34px;
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 0 14px;
+      border-bottom: 1px solid #1C1C1C;
+    }
+
+    #plugin-name {
+      color: #CC2200;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 3px;
+    }
+
+    #presets {
+      display: flex;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      background: transparent;
+      border: 1px solid #333333;
+      color: #555555;
+      padding: 3px 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 9px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .preset-btn:hover {
+      border-color: #666666;
+      color: #888888;
+    }
+
+    .preset-btn.active {
+      border-color: #CC2200;
+      color: #CC2200;
+    }
+
+    .preset-btn.active::before {
+      content: '● ';
+      font-size: 7px;
+    }
+
+    #version {
+      color: #666666;
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-align: right;
+    }
+
+    /* ── Knobs row ───────────────────────────────────────── */
+    #knobs-row {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      border-bottom: 1px solid #1C1C1C;
+    }
+
+    .knob-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 0 4px;
+    }
+
+    .knob-canvas {
+      cursor: ns-resize;
+      display: block;
+    }
+
+    .knob-label {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: #505050;
+      margin-top: 3px;
+    }
+
+    /* ── Bottom row ──────────────────────────────────────── */
+    #bottom-row {
+      height: 80px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 22px;
+      position: relative;
+    }
+
+    /* CAB section */
+    #cab-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    #cab-btn {
+      width: 70px;
+      height: 36px;
+      background: #1A1A1A;
+      border: 1px solid #CC2200;
+      color: #555555;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    #cab-btn.on {
+      background: #CC2200;
+      color: #FFFFFF;
+      border-color: #CC2200;
+    }
+
+    #cab-section-label {
+      font-size: 8px;
+      color: #333333;
+      letter-spacing: 1.5px;
+    }
+
+    /* Correlation section — absolutely centered in the bottom row */
+    #correlation-section {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    #correlation-title {
+      font-size: 8px;
+      color: #404040;
+      letter-spacing: 2.5px;
+    }
+
+    #correlation-canvas {
+      display: block;
+    }
+
+    #meter-end-labels {
+      width: 440px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8px;
+      color: #404040;
+      padding: 0 2px;
+    }
+
+    #warning-text {
+      display: none;
+      font-size: 9px;
+      color: #CC2200;
+      letter-spacing: 1.5px;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ─── Header ─────────────────────────────────────── -->
+    <div id="header">
+      <span id="plugin-name">INDUSTRIAL IRON</span>
+
+      <div id="presets">
+        <button class="preset-btn active" data-preset="0">RHYTHM HEAVY</button>
+        <button class="preset-btn"        data-preset="1">LEAD CUT</button>
+        <button class="preset-btn"        data-preset="2">DI CLEAN</button>
+      </div>
+
+      <span id="version">v1.0</span>
+    </div>
+
+    <!-- ─── Knobs ──────────────────────────────────────── -->
+    <div id="knobs-row">
+
+      <!-- kGain = 0, default 0.7 -->
+      <div class="knob-cell">
+        <canvas id="knob-0" class="knob-canvas" width="80" height="90"
+                data-param="0" data-default="0.7"></canvas>
+        <span class="knob-label">GAIN</span>
+      </div>
+
+      <!-- kTone = 1, default 0.5 -->
+      <div class="knob-cell">
+        <canvas id="knob-1" class="knob-canvas" width="80" height="90"
+                data-param="1" data-default="0.5"></canvas>
+        <span class="knob-label">TONE</span>
+      </div>
+
+      <!-- kTightness = 2, default 0.6 -->
+      <div class="knob-cell">
+        <canvas id="knob-2" class="knob-canvas" width="80" height="90"
+                data-param="2" data-default="0.6"></canvas>
+        <span class="knob-label">TIGHTNESS</span>
+      </div>
+
+      <!-- kWidth = 3, default 0.8 -->
+      <div class="knob-cell">
+        <canvas id="knob-3" class="knob-canvas" width="80" height="90"
+                data-param="3" data-default="0.8"></canvas>
+        <span class="knob-label">WIDTH</span>
+      </div>
+
+      <!-- kPan = 7 (TODO: add to EParams in IndustrialIron.h before building) -->
+      <div class="knob-cell">
+        <canvas id="knob-7" class="knob-canvas" width="80" height="90"
+                data-param="7" data-default="0.5"></canvas>
+        <span class="knob-label">PAN</span>
+      </div>
+
+      <!-- kParamOutput = 5, default 0.5 -->
+      <div class="knob-cell">
+        <canvas id="knob-5" class="knob-canvas" width="80" height="90"
+                data-param="5" data-default="0.5"></canvas>
+        <span class="knob-label">OUTPUT</span>
+      </div>
+
+    </div>
+
+    <!-- ─── Bottom ────────────────────────────────────── -->
+    <div id="bottom-row">
+
+      <div id="cab-section">
+        <button id="cab-btn" class="on">CAB</button>
+        <span id="cab-section-label">CAB SIM</span>
+      </div>
+
+      <div id="correlation-section">
+        <span id="correlation-title">CORRELATION</span>
+        <canvas id="correlation-canvas" width="440" height="18"></canvas>
+        <div id="meter-end-labels">
+          <span>L</span>
+          <span>∅</span>
+          <span>R</span>
+        </div>
+        <span id="warning-text">&#9888; PHASE CANCELLATION — REDUCE WIDTH</span>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

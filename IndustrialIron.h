@@ -19,6 +19,7 @@ enum EParams
     kCabOn,          // Cab sim toggle 0/1
     kParamOutput,    // Output trim 0.0–1.0 (prefixed to avoid clash with iplug::kOutput)
     kPreset,         // Preset selector 0/1/2
+    kPan,            // Equal-power stereo pan -1.0 (L) to +1.0 (R), center 0.0
     kNumParams
 };
 
@@ -40,8 +41,16 @@ enum ECtrlTags
 // Preset count per SPEC section 5
 const int kNumPresets = 3;
 
+// Message tags for SendArbitraryMsgFromDelegate (must match JS MSG_TAG_* constants)
+enum EMsgTags
+{
+    kMsgTagCorrelation = 0  // float — correlation value pushed to WebView via OnIdle
+};
+
 using namespace iplug;
+#ifndef NO_IGRAPHICS
 using namespace igraphics;
+#endif
 
 class IndustrialIron final : public Plugin
 {
@@ -51,6 +60,7 @@ public:
 #if IPLUG_EDITOR
     bool OnHostRequestingSupportedViewConfiguration(int width, int height) override { return true; }
     void OnParamChange(int paramIdx) override;
+    void OnIdle() override;
 #endif
 
 #if IPLUG_DSP
@@ -69,16 +79,18 @@ private:
         float tightness;
         float width;
         float cabOn;
+        float pan;   // actual value: -1.0 (L) to +1.0 (R), center 0.0
     };
 
     static constexpr PresetData kPresets[3] =
     {
-        { 0.80f, 0.45f, 0.70f, 0.90f, 1.f },  // Rhythm Heavy
-        { 0.65f, 0.65f, 0.50f, 0.60f, 1.f },  // Lead Cut
-        { 0.30f, 0.50f, 0.20f, 0.00f, 0.f },  // DI Clean
+        { 0.80f, 0.45f, 0.70f, 0.90f, 1.f, 0.0f },  // Rhythm Heavy
+        { 0.65f, 0.65f, 0.50f, 0.60f, 1.f, 0.0f },  // Lead Cut
+        { 0.30f, 0.50f, 0.20f, 0.00f, 0.f, 0.0f },  // DI Clean
     };
 
-    int mCurrentPreset = -1;  // -1 = no preset active
+    int mCurrentPreset  = -1; // -1 = no preset active
+    int mIdleFrameCount =  0; // throttle OnIdle correlation push
     PreEQ           mPreEQ;
     AsymClipper     mAsymClipper;
     PostCompressor  mPostCompressor;

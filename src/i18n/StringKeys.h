@@ -13,6 +13,7 @@ enum class StringKey : int
     kOutputLabel,
     kCabLabel,
     kPresetLabel,
+    kPanLabel,
 
     // Preset names
     kPresetRhythmHeavy,

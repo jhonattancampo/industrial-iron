@@ -26,8 +26,10 @@ iplug_add_plugin(${PROJECT_NAME}
     src/i18n/Strings_EN.h
     src/i18n/Strings_ES.h
     src/i18n/LocalizedStrings.h
-  RESOURCES
-    resources/fonts/Roboto-Regular.ttf
+  WEB_RESOURCES
+    resources/web/index.html
+    resources/web/script.js
+  UI WEBVIEW
   FORMATS
     MINIMAL_PLUGINS
 )
