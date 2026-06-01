@@ -67,7 +67,7 @@ void IronWallPanner::ProcessBlock(float* mono, float* outL, float* outR, int nFr
         // Re-anchor when gap closes to < 2 samples.
         const float gap = std::fmod(static_cast<float>(mWritePos) - mReadPos + bufSizeF, bufSizeF);
         if (gap < 2.f)
-            mReadPos = std::fmod(mReadPos - static_cast<float>(mDelaySamples) + bufSizeF, bufSizeF);
+            mReadPos = std::fmod(static_cast<float>(mWritePos) - static_cast<float>(mDelaySamples) + bufSizeF, bufSizeF);
 
         const float L = in;
         const float R = in + mWidth * (delayed - in); // lerp(in, delayed, mWidth)
