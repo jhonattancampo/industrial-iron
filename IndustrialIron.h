@@ -12,7 +12,7 @@
 // Parameter indices — must match registration order in constructor
 enum EParams
 {
-    kGain = 0,       // Input gain  0.0–1.0, maps to -20..+40 dB in DSP
+    kGain = 0,       // Input gain  0.0–1.0, maps to 0..+60 dB in DSP
     kTone,           // Pre-EQ tone balance 0.0–1.0
     kTightness,      // Post-compressor threshold 0.0–1.0
     kWidth,          // Iron Wall spread 0.0–1.0
@@ -73,7 +73,7 @@ private:
 
     static constexpr PresetData kPresets[3] =
     {
-        { 0.80f, 0.45f, 0.70f, 0.90f, 1.f },  // Rhythm Heavy
+        { 0.65f, 0.35f, 0.85f, 0.95f, 1.f },  // Rhythm Heavy
         { 0.65f, 0.65f, 0.50f, 0.60f, 1.f },  // Lead Cut
         { 0.30f, 0.50f, 0.20f, 0.00f, 0.f },  // DI Clean
     };

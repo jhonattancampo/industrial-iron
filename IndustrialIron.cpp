@@ -241,11 +241,21 @@ void IndustrialIron::OnReset()
 
 void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-    // Phase 4 chain: InputGain → PreEQ → AsymClipper → PostCompressor → CabSim → IronWallPanner → OutputGain
+    // Phase 6b chain: InputGain → PreEQ → AsymClipper (3-stage) → PostCompressor → CabSim → IronWallPanner → OutputGain
 
-    // kGain: 0–1 → -20 to +40 dB
-    const double gainDb  = -20.0 + 60.0 * GetParam(kGain)->Value();
+    // kGain: 0–1 → 0 to +60 dB (exponential amplitude feel via linear-dB mapping)
+    //   0.0–0.5 = clean preamp zone (0 to +30 dB)
+    //   0.5–1.0 = saturation zone  (+30 to +60 dB, tube drive increases)
+    const double n       = GetParam(kGain)->Value();
+    const double gainDb  = 60.0 * n;
     const double gainLin = std::pow(10.0, gainDb / 20.0);
+
+    // Tube drive: ramps from 1.0 (unity small-signal gain, subtle warmth) at n≤0.5
+    // to 5.0 (heavy saturation) at n=1.0. Below 0.5 drive stays at 1.0.
+    // NOTE: if passive DI guitars show insufficient saturation at GAIN=0.3, shift
+    // the inflection from n=0.5 to n=0.4 (i.e. replace 0.5 with 0.4 below).
+    const float drive = 1.0f + 4.0f * static_cast<float>(std::max(0.0, (n - 0.5) * 2.0));
+    mAsymClipper.SetDrive(drive);
 
     // kParamOutput: 0–1 → -20 to +6 dB
     const double outDb   = -20.0 + 26.0 * GetParam(kParamOutput)->Value();
@@ -260,7 +270,7 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     for (int s = 0; s < nFrames; ++s)
         outputs[0][s] = static_cast<sample>(mPreEQ.Process(inputs[0][s] * gainLin));
 
-    // Hard clip with x4 oversampling (in-place)
+    // 3-stage distortion: TubeSat → HardClip → OutputShape, all at 4× SR (in-place)
     mAsymClipper.ProcessBlock(outputs[0], outputs[0], nFrames);
 
     // PostCompressor → float conversion (IronWallPanner uses float*, sample is double)
