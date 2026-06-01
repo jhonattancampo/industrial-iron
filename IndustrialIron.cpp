@@ -2,10 +2,15 @@
 #include "IPlug_include_in_plug_src.h"
 #include <cmath>
 
-#if IPLUG_EDITOR
+#if IPLUG_EDITOR && !defined(NO_IGRAPHICS)
 #include "IControls.h"
 #endif
 
+#ifdef WEBVIEW_EDITOR_DELEGATE
+#include "IPlugPaths.h"
+#endif
+
+#ifndef NO_IGRAPHICS
 // ---- Colours per SPEC section 7.2 ----------------------------------------
 static const IColor kColorBackground  { 255,  10,  10,  10 }; // #0A0A0A
 static const IColor kColorAccent      { 255, 204,  34,   0 }; // #CC2200
@@ -13,6 +18,7 @@ static const IColor kColorKnobTrack   { 255,  50,  50,  50 };
 static const IColor kColorText        { 255, 220, 220, 220 };
 static const IColor kColorPresetOn    { 255, 204,  34,   0 }; // accent when selected
 static const IColor kColorPresetOff   { 255,  45,  45,  45 };
+#endif
 
 // ---- Constructor -----------------------------------------------------------
 IndustrialIron::IndustrialIron(const InstanceInfo& info)
@@ -26,144 +32,29 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
     GetParam(kCabOn)->InitBool(LS(kCabLabel),         true);
     GetParam(kParamOutput)->InitDouble(LS(kOutputLabel),   0.5, 0.0, 1.0, 0.001);
     GetParam(kPreset)->InitInt(LS(kPresetLabel),      0,   0,   2);
+    GetParam(kPan)->InitDouble(LS(kPanLabel),          0.0, -1.0, 1.0, 0.001);
 
     // Register presets per SPEC section 5
     MakePreset(LS(kPresetRhythmHeavy),
         kPresets[0].gain, kPresets[0].tone, kPresets[0].tightness,
-        kPresets[0].width, kPresets[0].cabOn, 0.5f, 0.f);
+        kPresets[0].width, kPresets[0].cabOn, 0.5f, 0.f, kPresets[0].pan);
 
     MakePreset(LS(kPresetLeadCut),
         kPresets[1].gain, kPresets[1].tone, kPresets[1].tightness,
-        kPresets[1].width, kPresets[1].cabOn, 0.5f, 1.f);
+        kPresets[1].width, kPresets[1].cabOn, 0.5f, 1.f, kPresets[1].pan);
 
     MakePreset(LS(kPresetDIClean),
         kPresets[2].gain, kPresets[2].tone, kPresets[2].tightness,
-        kPresets[2].width, kPresets[2].cabOn, 0.5f, 2.f);
+        kPresets[2].width, kPresets[2].cabOn, 0.5f, 2.f, kPresets[2].pan);
 
-#if IPLUG_EDITOR
-    mMakeGraphicsFunc = [&]() {
-        return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS);
+#ifdef WEBVIEW_EDITOR_DELEGATE
+    mEditorInitFunc = [&]() {
+        LoadIndexHtml(__FILE__, GetBundleID());
+        EnableScroll(false);
     };
-
-    mLayoutFunc = [&](IGraphics* pGraphics) {
-        const IRECT bounds = pGraphics->GetBounds();
-
-        // Resize: just reposition existing controls
-        if (pGraphics->NControls()) {
-            pGraphics->GetBackgroundControl()->SetTargetAndDrawRECTs(bounds);
-            return;
-        }
-
-        // ---- Setup ----
-        pGraphics->LoadFont("Roboto-Regular", ROBOTO_FN);
-        pGraphics->AttachPanelBackground(kColorBackground);
-
-        // ---- Typography ----
-        const IText titleText  { 18.f, kColorAccent,    "Roboto-Regular", EAlign::Near };
-        const IText versionText{ 11.f, kColorText,      "Roboto-Regular", EAlign::Far  };
-        const IText labelText  { 11.f, kColorText,      "Roboto-Regular", EAlign::Center };
-        const IText presetText { 12.f, kColorText,      "Roboto-Regular", EAlign::Center };
-
-        // ---- Header row (top 36 px) ----
-        const IRECT header     = bounds.GetFromTop(36.f);
-        const IRECT titleRect  = header.GetFromLeft(260.f).GetPadded(-8.f);
-        const IRECT versionRect= header.GetFromRight(80.f).GetPadded(-8.f);
-        const IRECT presetArea = header.GetMidHPadded(180.f);  // centred preset buttons
-
-        // ---- Knob row (rows 36–220, centered) ----
-        const IRECT knobRow  = bounds.GetReducedFromTop(36.f).GetReducedFromBottom(80.f);
-        const float kKnobW   = bounds.W() / 5.f;
-        const float kKnobH   = knobRow.H();
-
-        const IRECT gainRect  = knobRow.GetGridCell(0, 0, 1, 5).GetPadded(-8.f);
-        const IRECT toneRect  = knobRow.GetGridCell(0, 1, 1, 5).GetPadded(-8.f);
-        const IRECT tightRect = knobRow.GetGridCell(0, 2, 1, 5).GetPadded(-8.f);
-        const IRECT widthRect = knobRow.GetGridCell(0, 3, 1, 5).GetPadded(-8.f);
-        const IRECT outputRect= knobRow.GetGridCell(0, 4, 1, 5).GetPadded(-8.f);
-
-        // ---- Bottom row (last 80 px) ----
-        const IRECT bottomRow = bounds.GetFromBottom(80.f).GetPadded(-10.f);
-        const IRECT cabRect   = bottomRow.GetFromLeft(140.f);
-
-        // ---- IVStyle for knobs ----
-        const IVStyle knobStyle = IVStyle()
-            .WithColor(kBG,     kColorBackground)
-            .WithColor(kFG,     kColorKnobTrack)
-            .WithColor(kX1,     kColorAccent)
-            .WithColor(kHL,     kColorAccent)
-            .WithColor(kON,     kColorAccent)
-            .WithLabelText(labelText)
-            .WithValueText(labelText.WithSize(9.f));
-
-        const IVStyle toggleStyle = IVStyle()
-            .WithColor(kBG,   kColorBackground)
-            .WithColor(kFG,   kColorKnobTrack)
-            .WithColor(kX1,   kColorAccent)
-            .WithColor(kON,   kColorAccent)
-            .WithLabelText(labelText);
-
-        const IVStyle presetStyle = IVStyle()
-            .WithColor(kBG,  kColorPresetOff)
-            .WithColor(kFG,  kColorPresetOff)
-            .WithColor(kX1,  kColorPresetOn)
-            .WithColor(kON,  kColorPresetOn)
-            .WithColor(kHL,  kColorAccent)
-            .WithLabelText(presetText);
-
-        // ---- Title & version ----
-        pGraphics->AttachControl(
-            new ITextControl(titleRect, LS(kPluginName), titleText),
-            kCtrlTagTitle);
-        WDL_String buildStr;
-        GetBuildInfoStr(buildStr, __DATE__, __TIME__);
-        pGraphics->AttachControl(
-            new ITextControl(versionRect, buildStr.Get(), versionText),
-            kCtrlTagVersion);
-
-        // ---- 5 Knobs ----
-        pGraphics->AttachControl(
-            new IVKnobControl(gainRect,   kGain,      LS(kGainLabel),      knobStyle), kCtrlTagGainKnob);
-        pGraphics->AttachControl(
-            new IVKnobControl(toneRect,   kTone,      LS(kToneLabel),      knobStyle), kCtrlTagToneKnob);
-        pGraphics->AttachControl(
-            new IVKnobControl(tightRect,  kTightness, LS(kTightnessLabel), knobStyle), kCtrlTagTightnessKnob);
-        pGraphics->AttachControl(
-            new IVKnobControl(widthRect,  kWidth,     LS(kWidthLabel),     knobStyle), kCtrlTagWidthKnob);
-        pGraphics->AttachControl(
-            new IVKnobControl(outputRect, kParamOutput, LS(kOutputLabel),  knobStyle), kCtrlTagOutputKnob);
-
-        // ---- CAB toggle ----
-        pGraphics->AttachControl(
-            new IVToggleControl(cabRect, kCabOn, LS(kCabLabel), toggleStyle),
-            kCtrlTagCabToggle);
-
-        // ---- Preset selector — IVRadioButtonControl with toggle-off ----
-        // Value encoding: 0.0=preset0, 0.5=preset1, 1.0=preset2, -1.0=none active.
-        // GetSelectedIdx() = int(0.5 + value * (numStates-1)); -1.0 → idx -1 → no highlight.
-        pGraphics->AttachControl(
-            new IVRadioButtonControl(
-                presetArea,
-                [&](IControl* pCtrl) {
-                    const int clickedIdx = static_cast<int>(std::round(pCtrl->GetValue() * 2.0));
-                    if (clickedIdx == mCurrentPreset) {
-                        mCurrentPreset = -1;
-                        pCtrl->SetValue(-1.0);
-                        pCtrl->SetDirty(false);
-                    } else {
-                        LoadPreset(clickedIdx);
-                    }
-                },
-                { LS(kPresetRhythmHeavy), LS(kPresetLeadCut), LS(kPresetDIClean) },
-                "",
-                presetStyle,
-                EVShape::Rectangle,
-                EDirection::Horizontal
-            ),
-            kCtrlTagPresetRadio
-        );
-        // No preset active on startup
-        pGraphics->GetControlWithTag(kCtrlTagPresetRadio)->SetValue(-1.0);
-    };
+#ifdef DEBUG
+    SetEnableDevTools(true);
+#endif
 #endif
 }
 
@@ -185,6 +76,7 @@ void IndustrialIron::LoadPreset(int presetIdx)
     GetParam(kWidth)->SetNormalized(p.width);
     GetParam(kCabOn)->SetNormalized(p.cabOn);
     GetParam(kPreset)->Set(static_cast<double>(presetIdx));
+    GetParam(kPan)->Set(static_cast<double>(p.pan));
     SendCurrentParamValuesFromDelegate();
 
     auto notifyHost = [&](int idx, double normVal) {
@@ -197,17 +89,7 @@ void IndustrialIron::LoadPreset(int presetIdx)
     notifyHost(kTightness,  p.tightness);
     notifyHost(kWidth,      p.width);
     notifyHost(kCabOn,      p.cabOn);
-
-#if IPLUG_EDITOR
-    if (auto* pUI = GetUI())
-    {
-        if (auto* pCtrl = pUI->GetControlWithTag(kCtrlTagPresetRadio))
-        {
-            pCtrl->SetValue(static_cast<double>(presetIdx) / 2.0);
-            pCtrl->SetDirty(false);
-        }
-    }
-#endif
+    notifyHost(kPan,        (p.pan + 1.0) / 2.0);  // normalize -1..+1 → 0..1
 }
 
 #if IPLUG_EDITOR
@@ -218,6 +100,20 @@ void IndustrialIron::OnParamChange(int paramIdx)
         const int idx = static_cast<int>(GetParam(kPreset)->Value() + 0.5);
         LoadPreset(idx);
     }
+}
+
+// ---- OnIdle ----------------------------------------------------------------
+// Pushes correlation float to WebView ~30Hz. Throttled to avoid bridge overhead.
+void IndustrialIron::OnIdle()
+{
+#ifdef WEBVIEW_EDITOR_DELEGATE
+    if (++mIdleFrameCount >= 2)
+    {
+        mIdleFrameCount = 0;
+        float corr = mIronWall.GetCorrelation();
+        SendArbitraryMsgFromDelegate(kMsgTagCorrelation, sizeof(float), &corr);
+    }
+#endif
 }
 #endif
 
@@ -285,11 +181,16 @@ void IndustrialIron::ProcessBlock(sample** inputs, sample** outputs, int nFrames
     mIronWall.SetWidth(width);
     mIronWall.ProcessBlock(mMonoF.data(), mOutLF.data(), mOutRF.data(), nFrames);
 
-    // OutputGain + copy back to double outputs
+    // Equal-power pan (kPan: -1=full L, 0=center, +1=full R)
+    const double panAngle = GetParam(kPan)->Value() * (M_PI / 4.0);
+    const double gainL    = std::cos(panAngle + M_PI / 4.0);
+    const double gainR    = std::cos(panAngle - M_PI / 4.0);
+
+    // OutputGain + pan + copy back to double outputs
     for (int s = 0; s < nFrames; ++s)
     {
-        outputs[0][s] = static_cast<sample>(mOutLF[s] * outLin);
-        outputs[1][s] = static_cast<sample>(mOutRF[s] * outLin);
+        outputs[0][s] = static_cast<sample>(mOutLF[s] * outLin * gainL);
+        outputs[1][s] = static_cast<sample>(mOutRF[s] * outLin * gainR);
     }
 
     // Store metering state for UI polling (Phase 5)

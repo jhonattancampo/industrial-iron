@@ -10,6 +10,7 @@ void IronWallPanner::OnReset(double sampleRate)
     mDelaySamples = static_cast<int>(sampleRate * 0.007);
     mBufSize      = mDelaySamples + 64;
     mBuf.assign(mBufSize, 0.f);
+    std::fill(mBuf.begin(), mBuf.end(), 0.f);
 
     mWritePos    = mDelaySamples;
     mReadPos     = 0.f;
