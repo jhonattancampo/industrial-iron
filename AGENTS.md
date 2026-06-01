@@ -56,3 +56,15 @@ degrades and circular buffer drift checks stop working.
 Fix: always keep positions in [0, mBufSize) using modulo wrap.
 Drift check: use fmod(write - read + bufSize, bufSize) 
 instead of raw subtraction.
+
+
+### IronWallPanner drift reset — anchor to write position
+When the pitch-shifted read position drifts too close to write,
+the drift reset MUST anchor to mWritePos, not to mReadPos.
+
+WRONG: mReadPos = fmod(mReadPos - mDelaySamples + bufSize, bufSize)
+  → accumulated pitch drift makes each reset land at wrong offset
+  → autopan effect over time
+
+CORRECT: mReadPos = fmod(mWritePos - mDelaySamples + bufSize, bufSize)
+  → delay is always exactly mDelaySamples regardless of drift history
