@@ -34,3 +34,37 @@ No phase is complete until a QA subagent runs the checklist
 from skills/audio-testing/SKILL.md and reports results.
 The orchestrator must launch this subagent explicitly at the
 end of every phase, before any git commits.
+
+## Branch creation rule
+ALWAYS create new feature branches from `dev`, not from other 
+feature branches. dev is the integration branch and always 
+contains the latest stable state of all phases.
+
+Before creating any branch:
+  git checkout dev
+  git pull origin dev
+  git checkout -b feat/new-branch-name
+
+Never branch from feat/* branches directly.
+
+### Circular buffer positions — float precision trap
+Never let write/read positions grow unbounded as int/float.
+IEEE 754 floats represent integers exactly only up to 2²⁴ (16M).
+At 44100 Hz that's ~380 seconds — after that, float precision 
+degrades and circular buffer drift checks stop working.
+
+Fix: always keep positions in [0, mBufSize) using modulo wrap.
+Drift check: use fmod(write - read + bufSize, bufSize) 
+instead of raw subtraction.
+
+
+### IronWallPanner drift reset — anchor to write position
+When the pitch-shifted read position drifts too close to write,
+the drift reset MUST anchor to mWritePos, not to mReadPos.
+
+WRONG: mReadPos = fmod(mReadPos - mDelaySamples + bufSize, bufSize)
+  → accumulated pitch drift makes each reset land at wrong offset
+  → autopan effect over time
+
+CORRECT: mReadPos = fmod(mWritePos - mDelaySamples + bufSize, bufSize)
+  → delay is always exactly mDelaySamples regardless of drift history

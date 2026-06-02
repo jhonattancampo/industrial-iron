@@ -16,6 +16,7 @@ constexpr const char* kStrings_EN[static_cast<int>(StringKey::kCOUNT)] =
     "OUTPUT",                // kOutputLabel
     "CAB",                   // kCabLabel
     "PRESET",                // kPresetLabel
+    "PAN",                   // kPanLabel
 
     // Preset names
     "Rhythm Heavy",          // kPresetRhythmHeavy

@@ -49,7 +49,7 @@ private:
     static constexpr double kLowMidQ       = 1.2;
     static constexpr double kMidScoopFreq  = 1000.0;
     static constexpr double kMidScoopQ     = 1.5;
-    static constexpr double kMidScoopGain  = -4.0;
+    static constexpr double kMidScoopGain  = -7.0;
     static constexpr double kPresenceFreq  = 3500.0;
     static constexpr double kPresenceQ     = 1.0;
 };

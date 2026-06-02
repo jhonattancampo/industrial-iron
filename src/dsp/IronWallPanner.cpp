@@ -10,9 +10,10 @@ void IronWallPanner::OnReset(double sampleRate)
     mDelaySamples = static_cast<int>(sampleRate * 0.007);
     mBufSize      = mDelaySamples + 64;
     mBuf.assign(mBufSize, 0.f);
+    std::fill(mBuf.begin(), mBuf.end(), 0.f);
 
-    mWritePos    = mDelaySamples;
-    mReadPos     = 0.f;
+    mWritePos    = 0;
+    mReadPos     = mBufSize - mDelaySamples; // lags write by exactly mDelaySamples
 
     mCorrelation = 1.f;
     mWarning     = false;
@@ -45,22 +46,11 @@ void IronWallPanner::ProcessBlock(float* mono, float* outL, float* outR, int nFr
     {
         const float in = mono[i];
 
-        // Write into circular buffer
-        mBuf[mWritePos % mBufSize] = in;
-        mWritePos++;
+        mBuf[mWritePos] = in;
+        mWritePos = (mWritePos + 1) % mBufSize;
 
-        // Fractional read for +2 cents pitch shift
-        const int   idx0    = static_cast<int>(mReadPos) % mBufSize;
-        const int   idx1    = (idx0 + 1) % mBufSize;
-        const float frac    = mReadPos - std::floor(mReadPos);
-        const float delayed = mBuf[idx0] + frac * (mBuf[idx1] - mBuf[idx0]);
-
-        mReadPos += kPitchRatio;
-
-        // Drift reset: kPitchRatio > 1.0 means mReadPos closes on mWritePos over time.
-        // Re-anchor by subtracting mDelaySamples so the read pointer stays ~7ms behind.
-        if ((static_cast<float>(mWritePos) - mReadPos) < 2.f)
-            mReadPos -= static_cast<float>(mDelaySamples);
+        const float delayed = mBuf[mReadPos];
+        mReadPos = (mReadPos + 1) % mBufSize;
 
         const float L = in;
         const float R = in + mWidth * (delayed - in); // lerp(in, delayed, mWidth)
