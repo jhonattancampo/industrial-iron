@@ -33,19 +33,20 @@ IndustrialIron::IndustrialIron(const InstanceInfo& info)
     GetParam(kParamOutput)->InitDouble(LS(kOutputLabel),   0.5, 0.0, 1.0, 0.001);
     GetParam(kPreset)->InitInt(LS(kPresetLabel),      0,   0,   2);
     GetParam(kPan)->InitDouble(LS(kPanLabel),          0.0, -1.0, 1.0, 0.001);
+    GetParam(kCabType)->InitInt("CAB TYPE",            0,   0,   2);
 
     // Register presets per SPEC section 5
     MakePreset(LS(kPresetRhythmHeavy),
         kPresets[0].gain, kPresets[0].tone, kPresets[0].tightness,
-        kPresets[0].width, kPresets[0].cabOn, 0.5f, 0.f, kPresets[0].pan);
+        kPresets[0].width, kPresets[0].cabOn, 0.5f, 0.f, kPresets[0].pan, 0.f);
 
     MakePreset(LS(kPresetLeadCut),
         kPresets[1].gain, kPresets[1].tone, kPresets[1].tightness,
-        kPresets[1].width, kPresets[1].cabOn, 0.5f, 1.f, kPresets[1].pan);
+        kPresets[1].width, kPresets[1].cabOn, 0.5f, 1.f, kPresets[1].pan, 0.f);
 
     MakePreset(LS(kPresetDIClean),
         kPresets[2].gain, kPresets[2].tone, kPresets[2].tightness,
-        kPresets[2].width, kPresets[2].cabOn, 0.5f, 2.f, kPresets[2].pan);
+        kPresets[2].width, kPresets[2].cabOn, 0.5f, 2.f, kPresets[2].pan, 0.f);
 
 #ifdef WEBVIEW_EDITOR_DELEGATE
     mEditorInitFunc = [&]() {
@@ -100,6 +101,9 @@ void IndustrialIron::OnParamChange(int paramIdx)
         const int idx = static_cast<int>(GetParam(kPreset)->Value() + 0.5);
         LoadPreset(idx);
     }
+    if (paramIdx == kCabType) {
+        mCabSim.SetCabType(GetParam(kCabType)->Int());
+    }
 }
 
 // ---- OnIdle ----------------------------------------------------------------
@@ -126,6 +130,7 @@ void IndustrialIron::OnReset()
     mAsymClipper.OnReset(sr);
     mPostCompressor.OnReset(sr);
     mCabSim.OnReset(sr);
+    mCabSim.SetCabType(GetParam(kCabType)->Int());
     mIronWall.OnReset(sr);
     SetLatency(mAsymClipper.GetLatency());
 

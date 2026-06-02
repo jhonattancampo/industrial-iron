@@ -24,16 +24,14 @@ AsymClipper::AsymClipper()
     // Member is constructed with k4x in the header initialiser — nothing extra needed.
 }
 
-void AsymClipper::OnReset(double /*sampleRate*/)
+void AsymClipper::OnReset(double sampleRate)
 {
-    // Reset oversampler internal filter state (clears any stale samples between
-    // host play/stop cycles). DEFAULT_BLOCK_SIZE is fine for buffer pre-allocation;
-    // the oversampler will resize automatically on the first ProcessBlock call if
-    // nFrames differs.
     mOverSampler.Reset();
-
-    // Latency is filter-order-based, not sample-rate-dependent.
     mLatency = kOversamplerLatency;
+
+    mAttackCoeff  = 1.f - std::exp(-2.2f / static_cast<float>(0.001 * sampleRate));
+    mReleaseCoeff = 1.f - std::exp(-2.2f / static_cast<float>(0.050 * sampleRate));
+    mEnv = 0.f;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,21 +77,30 @@ void AsymClipper::ProcessBlock(sample* in, sample* out, int nFrames)
     sample* inPtrs[1]  { in  };
     sample* outPtrs[1] { out };
 
-    // Snapshot drive for the lambda capture.
-    // A single float (4 bytes) is well within std::function SBO on all major
-    // implementations (libc++ ≥ 24 bytes, libstdc++ ≥ 16 bytes) — no heap alloc.
+    // Envelope follower at original rate — feeds subtle ±10% drive modulation.
+    // One-pole attack/release follower; coefficients computed in OnReset().
+    for (int s = 0; s < nFrames; ++s)
+    {
+        const float level = std::abs(static_cast<float>(in[s]));
+        const float coeff = (level > mEnv) ? mAttackCoeff : mReleaseCoeff;
+        mEnv += coeff * (level - mEnv);
+    }
+    const float envDriveMod = 1.0f + 0.10f * mEnv;
+
+    // Snapshot drive + envDriveMod for lambda capture (both are plain floats,
+    // well within SBO — no heap allocation).
     const float driveSnap = mDrive;
 
     // All three stages run inside the oversampler lambda at 4× SR.
-    // Harmonic generation from TubeSat and OutputShape is therefore fully
-    // covered by the anti-aliasing filters — no separate oversampling needed.
+    // DC bias shifts the waveform asymmetrically to generate even harmonics
+    // before the waveshaper, then a proportional offset is removed after.
     mOverSampler.ProcessBlock(
         inPtrs,
         outPtrs,
         nFrames,
         /*nInChans=*/1,
         /*nOutChans=*/1,
-        [driveSnap](sample** inputs, sample** outputs, int frames)
+        [driveSnap, envDriveMod](sample** inputs, sample** outputs, int frames)
         {
             const sample* src = inputs[0];
             sample*       dst = outputs[0];
@@ -101,9 +108,11 @@ void AsymClipper::ProcessBlock(sample* in, sample* out, int nFrames)
             for (int i = 0; i < frames; ++i)
             {
                 float x = static_cast<float>(src[i]);
-                x = TubeSat(x, driveSnap);  // Stage 1: even harmonics, valve warmth
-                x = HardClip(x);             // Stage 2: asymmetric hard limit
-                x = OutputShape(x);          // Stage 3: smooth hard-clip artifacts
+                x += 0.025f;                               // 4a: DC bias in
+                x = TubeSat(x, driveSnap * envDriveMod);  // Stage 1: even harmonics, valve warmth
+                x = HardClip(x);                           // Stage 2: asymmetric hard limit
+                x = OutputShape(x);                        // Stage 3: smooth hard-clip artifacts
+                x -= 0.025f * 0.3f;                        // 4a: DC bias out
                 dst[i] = static_cast<sample>(x);
             }
         }

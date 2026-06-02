@@ -20,6 +20,7 @@ enum EParams
     kParamOutput,    // Output trim 0.0–1.0 (prefixed to avoid clash with iplug::kOutput)
     kPreset,         // Preset selector 0/1/2
     kPan,            // Equal-power stereo pan -1.0 (L) to +1.0 (R), center 0.0
+    kCabType,        // Cab IR selector: 0=Marshall, 1=Mesa, 2=V30
     kNumParams
 };
 

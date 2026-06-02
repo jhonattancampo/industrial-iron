@@ -74,8 +74,11 @@ private:
     // x4 oversampler — mono (1-in / 1-out), block-processing mode
     OverSampler<sample> mOverSampler { EFactor::k4x, /*blockProcessing=*/true, 1, 1 };
 
-    float mDrive  = 1.0f;
-    int   mLatency = 0;
+    float mDrive        = 1.0f;
+    int   mLatency      = 0;
+    float mEnv          = 0.f;
+    float mAttackCoeff  = 0.f;
+    float mReleaseCoeff = 0.f;
 };
 
 END_IPLUG_NAMESPACE

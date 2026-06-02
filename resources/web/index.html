@@ -137,24 +137,28 @@
       flex-shrink: 0;
     }
 
-    #cab-btn {
-      width: 70px;
+    #cab-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .cab-type-btn {
+      width: 56px;
       height: 36px;
       background: #1A1A1A;
       border: 1px solid #CC2200;
-      color: #555555;
+      color: #CC2200;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 10px;
+      font-size: 8px;
       font-weight: bold;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
       cursor: pointer;
       outline: none;
     }
 
-    #cab-btn.on {
+    .cab-type-btn.active {
       background: #CC2200;
       color: #FFFFFF;
-      border-color: #CC2200;
     }
 
     #cab-section-label {
@@ -269,7 +273,11 @@
     <div id="bottom-row">
 
       <div id="cab-section">
-        <button id="cab-btn" class="on">CAB</button>
+        <div id="cab-buttons">
+          <button class="cab-type-btn active" data-cab="0">MARSHALL</button>
+          <button class="cab-type-btn"        data-cab="1">MESA</button>
+          <button class="cab-type-btn"        data-cab="2">V30</button>
+        </div>
         <span id="cab-section-label">CAB SIM</span>
       </div>
 

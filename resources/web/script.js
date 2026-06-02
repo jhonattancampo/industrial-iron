@@ -10,6 +10,7 @@
 //   5  kParamOutput
 //   6  kPreset
 //   7  kPan
+//   8  kCabType
 //
 // Message tags (must match EMsgTags in IndustrialIron.h):
 //   0  kMsgTagCorrelation
@@ -25,14 +26,15 @@ const K_WIDTH       = 3;
 const K_CAB_ON      = 4;
 const K_OUTPUT      = 5;
 const K_PRESET      = 6;
-const K_PAN         = 7; // pending C++ implementation
+const K_PAN         = 7;
+const K_CAB_TYPE    = 8;
 
 const MSG_TAG_CORRELATION = 0; // arbitrary msg tag for correlation data
 
 // ── Global state ─────────────────────────────────────────────
 
-const gKnobs = {};   // paramIdx → IronKnob
-let   gCabOn = true; // mirrors kCabOn default (true per Spec §3)
+const gKnobs = {};      // paramIdx → IronKnob
+let   gCabType = 0;     // mirrors kCabType (0=Marshall, 1=Mesa, 2=V30)
 let   gCorrelationSmoothed = 0.5; // EMA-smoothed correlation for jitter reduction
 
 // ============================================================
@@ -270,19 +272,25 @@ function _fillRoundRect(ctx, x, y, w, h, r) {
 }
 
 // ============================================================
-// CAB toggle
+// CAB type selector
 // ============================================================
 
-function updateCabButton(on) {
-  gCabOn = on;
-  const btn = document.getElementById('cab-btn');
-  if (!btn) return;
-  btn.classList.toggle('on', on);
+function updateCabTypeButtons(type) {
+  gCabType = type;
+  document.querySelectorAll('.cab-type-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === type);
+  });
 }
 
-function toggleCab() {
-  updateCabButton(!gCabOn);
-  SPVFUI(K_CAB_ON, gCabOn ? 1.0 : 0.0);
+function setupCabTypeButtons() {
+  document.querySelectorAll('.cab-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type       = parseInt(btn.dataset.cab, 10);
+      const normalized = type / 2.0; // 0→0.0, 1→0.5, 2→1.0
+      updateCabTypeButtons(type);
+      SPVFUI(K_CAB_TYPE, normalized);
+    });
+  });
 }
 
 // ============================================================
@@ -405,8 +413,8 @@ function OnParamChange(paramIdx, val) {
     return;
   }
   switch (paramIdx) {
-    case K_CAB_ON:
-      updateCabButton(val >= 0.5);
+    case K_CAB_TYPE:
+      updateCabTypeButtons(Math.round(val * 2));
       break;
     case K_PRESET:
       updatePresetButtons(Math.round(val * 2));
@@ -445,6 +453,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Preset button click handlers
   setupPresetButtons();
 
-  // CAB button click handler
-  document.getElementById('cab-btn').addEventListener('click', toggleCab);
+  // CAB type selector click handlers
+  setupCabTypeButtons();
 });
