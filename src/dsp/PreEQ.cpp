@@ -9,20 +9,18 @@ void PreEQ::OnReset(double sampleRate)
     CalcHighPass(mHP, sampleRate, kHPFreq, kHPQ);
     CalcPeaking(mMidScoop, sampleRate, kMidScoopFreq, kMidScoopQ, kMidScoopGain);
 
-    // Modulated filters use current mTone value
+    CalcPeaking(mLowMid, sampleRate, kLowMidFreq, kLowMidQ, kLowMidGain);
+
+    // Presence is tone-modulated; low-mid is fixed
     float t = mTone;
-    double lowMidGain   = 8.0 + (2.0 - 8.0) * static_cast<double>(t);
     double presenceGain = 1.0 + (5.0 - 1.0) * static_cast<double>(t);
-    CalcPeaking(mLowMid,   sampleRate, kLowMidFreq,   kLowMidQ,   lowMidGain);
     CalcPeaking(mPresence, sampleRate, kPresenceFreq, kPresenceQ, presenceGain);
 }
 
 void PreEQ::SetTone(float t)
 {
     mTone = t;
-    double lowMidGain   = 8.0 + (2.0 - 8.0) * static_cast<double>(t);
     double presenceGain = 1.0 + (5.0 - 1.0) * static_cast<double>(t);
-    CalcPeaking(mLowMid,   mSampleRate, kLowMidFreq,   kLowMidQ,   lowMidGain);
     CalcPeaking(mPresence, mSampleRate, kPresenceFreq, kPresenceQ, presenceGain);
 }
 

@@ -33,7 +33,7 @@ private:
     void CalcPeaking(Biquad& f, double sr, double freq, double q, double gainDb);
 
     Biquad mHP;        // 80 Hz high-pass
-    Biquad mLowMid;    // 280 Hz peak  (kTone-modulated)
+    Biquad mLowMid;    // 200 Hz peak  (fixed +4 dB body boost)
     Biquad mMidScoop;  // 1000 Hz peak (fixed -4 dB)
     Biquad mPresence;  // 3500 Hz peak (kTone-modulated inverse)
 
@@ -45,8 +45,9 @@ private:
     // Spec §4.1 constants
     static constexpr double kHPFreq        = 80.0;
     static constexpr double kHPQ           = 0.7;
-    static constexpr double kLowMidFreq    = 280.0;
+    static constexpr double kLowMidFreq    = 200.0;
     static constexpr double kLowMidQ       = 1.2;
+    static constexpr double kLowMidGain    = 4.0;
     static constexpr double kMidScoopFreq  = 1000.0;
     static constexpr double kMidScoopQ     = 1.5;
     static constexpr double kMidScoopGain  = -7.0;

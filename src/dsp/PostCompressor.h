@@ -18,7 +18,7 @@ private:
     double mThresholdDb  = -20.0;
     double mMakeupGain   = 1.0;
 
-    static constexpr double kRatio       = 8.0;
+    static constexpr double kRatio       = 4.0;
     static constexpr double kAttackMs    = 5.0;
     static constexpr double kReleaseMs   = 80.0;
 

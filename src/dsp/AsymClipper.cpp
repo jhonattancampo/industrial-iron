@@ -45,9 +45,9 @@ void AsymClipper::OnReset(double sampleRate)
 float AsymClipper::TubeSat(float x, float drive) noexcept
 {
     if (x >= 0.f)
-        return  1.f - std::exp(-x * drive);
+        return  1.f - std::exp(-x * drive * 0.9f);
     else
-        return -1.f + std::exp( x * 0.8f * drive);
+        return -1.f + std::exp( x * 0.65f * drive);
 }
 
 // Stage 2 — Asymmetric hard clip (original character preserved).
